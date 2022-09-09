@@ -4,7 +4,7 @@ Read and use an [OnlyKey](https://onlykey.io/) backup from the terminal [WIP].
 
 ![main screen](main_screen.png)
 
-## Introduction
+## Summary
 
 *OnlyKey backup reader* is a terminal user interface (TUI) application written in Rust that enables
 you to view and use an OnlyKey's backup as if it was loaded on an actual OnlyKey.
