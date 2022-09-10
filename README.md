@@ -56,13 +56,13 @@ For other data:
 
 ## Usage
 ```
-$ ok_backup.exe --help
-ok_backup 0.1.0
+$ okbr.exe --help
+okbr 0.1.0
 svareille
 A cross-platform OnlyKey backup reader
 
 USAGE:
-    ok_backup.exe [OPTIONS] <BACKUP>
+    okbr.exe [OPTIONS] <BACKUP>
 
 ARGS:
     <BACKUP>    Path to the OnlyKey backup to load

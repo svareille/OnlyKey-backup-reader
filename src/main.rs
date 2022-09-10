@@ -22,7 +22,7 @@ mod res {
     pub mod text;
 }
 
-use ok_backup::{OnlyKey, OTP, BackupError};
+use okbr::{OnlyKey, OTP, BackupError};
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -255,7 +255,7 @@ fn main() -> Result<()> {
 
     setup_logger(cli.verbose.log_level_filter())?;
 
-    ensure!(ok_backup::verify_backup(&fs::read_to_string(&cli.backup).expect("Problem reading backup"))?,
+    ensure!(okbr::verify_backup(&fs::read_to_string(&cli.backup).expect("Problem reading backup"))?,
             "Backup seems corrupted. Aborting.");
     
 
@@ -726,7 +726,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                                 error!("Key must be 32 bytes, got {}", key.len());
                                                 app.set_error(&format!("Key must be 32 bytes (64 hex characters), got {}", key.len()))
                                             } else {
-                                                if let Err(e) =  ok.set_backup_ecc_key(key, ok_backup::ECCKeyType::X25519) {
+                                                if let Err(e) =  ok.set_backup_ecc_key(key, okbr::ECCKeyType::X25519) {
                                                     error!("Problem setting ECC key: {}", e);
                                                     return Err(e);
                                                 }
