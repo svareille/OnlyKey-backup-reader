@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc, Timelike};
 use data_encoding::HEXUPPER;
-use ok_backup::{AccountSlot, OTP, ECCKeySlot, KeyFeature};
+use okbr::{AccountSlot, OTP, ECCKeySlot, KeyFeature};
 use tui::{widgets::{Block, Widget, Table, Cell, Row, Gauge, Paragraph, Borders}, style::{Style, Color, Modifier}, layout::{Rect, Constraint, Alignment}};
 
 use crate::SelectedGeneral;
@@ -572,9 +572,9 @@ impl<'a> Widget for EccDataWidget<'a> {
             Some(key) => {
                 key_label = key.label;
                 key_type = match key.r#type {
-                    ok_backup::ECCKeyType::X25519 => "X25519",
-                    ok_backup::ECCKeyType::NIST256P1 => "NIST256P1",
-                    ok_backup::ECCKeyType::SECP256K1 => "SECP256K1",
+                    okbr::ECCKeyType::X25519 => "X25519",
+                    okbr::ECCKeyType::NIST256P1 => "NIST256P1",
+                    okbr::ECCKeyType::SECP256K1 => "SECP256K1",
                 };
                 key_usage = {
                     let mut usage = vec![];

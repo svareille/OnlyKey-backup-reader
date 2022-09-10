@@ -1,4 +1,4 @@
-use ok_backup::{verify_backup, OnlyKey, ECCKeySlot, CharAfter, OTP, KeyFeature, ECCKeyType};
+use okbr::{verify_backup, OnlyKey, ECCKeySlot, CharAfter, OTP, KeyFeature, ECCKeyType};
 
 mod common;
 

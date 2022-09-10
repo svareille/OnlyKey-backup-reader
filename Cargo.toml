@@ -1,5 +1,5 @@
 [package]
-name = "ok_backup"
+name = "okbr"
 description = "A cross-platform OnlyKey backup reader"
 version = "0.1.0"
 edition = "2021"

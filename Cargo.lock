@@ -552,7 +552,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ok_backup"
+name = "okbr"
 version = "0.1.0"
 dependencies = [
  "aes-gcm",
