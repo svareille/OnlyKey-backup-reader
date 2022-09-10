@@ -6,6 +6,9 @@ edition = "2021"
 authors = ["Simon Vareille",]
 readme = "README.md"
 license = "GPL-3.0"
+homepage = "https://github.com/SimonVareille/OnlyKey-backup-reader"
+repository = "https://github.com/SimonVareille/OnlyKey-backup-reader"
+keywords = ["tui", "onlykey"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
