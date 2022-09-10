@@ -1,4 +1,5 @@
 # OnlyKey backup reader TUI
+[![Rust](https://github.com/SimonVareille/OnlyKey-backup-reader/actions/workflows/rust.yml/badge.svg?branch=main)](https://github.com/SimonVareille/OnlyKey-backup-reader/actions/workflows/rust.yml)
 
 Read and use an [OnlyKey](https://onlykey.io/) backup from the terminal [WIP].
 
