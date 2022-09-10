@@ -121,7 +121,7 @@ pub(crate) fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
 }
 
 fn make_title<'a>() -> Paragraph<'a> {
-    Paragraph::new("Onlykey backup reader TUI")
+    Paragraph::new("OnlyKey backup reader TUI")
         .style(Style::default().fg(Color::LightCyan))
         .alignment(Alignment::Center)
         .block(
