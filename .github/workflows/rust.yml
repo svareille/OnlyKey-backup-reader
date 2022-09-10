@@ -19,6 +19,6 @@ jobs:
     - name: Install libxcb
       run: sudo apt install libxcb-shape0-dev libxcb-xfixes0-dev
     - name: Check
-      run: cargo check --verbose
+      run: cargo check
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo test
