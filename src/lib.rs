@@ -218,8 +218,6 @@ impl KeySlot for ECCKeySlot {
 
         let iv = &backup[payload_len..payload_len+12];
 
-        // ECC-encrypted backup are
-
         let shared_secret = hsalsa20(
             GenericArray::from_slice(&x25519(
                 *self.private_key.as_bytes(),
@@ -484,7 +482,7 @@ impl OnlyKey {
         trace!("Setting passphrase backup key");
         let key = ECCKeySlot{
             label: String::new(),
-            feature: KeyFeature::DECRYPTION,
+            feature: KeyFeature::DECRYPTION | KeyFeature::BACKUP,
             r#type: ECCKeyType::X25519,
             private_key: SecretKey::from_bytes(&Sha256::new()
                 .chain_update(passphrase)
@@ -503,7 +501,7 @@ impl OnlyKey {
         trace!("Setting ECC backup key");
         let ecc_key = ECCKeySlot {
             label: String::new(),
-            feature: KeyFeature::DECRYPTION,
+            feature: KeyFeature::DECRYPTION | KeyFeature::BACKUP,
             r#type: key_type,
             private_key: SecretKey::from_bytes(&key)?,
         };
