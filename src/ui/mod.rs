@@ -105,8 +105,8 @@ pub(crate) fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     else if matches!(app.current_panel, Panel::EnterDecrPass) {
         make_enter_passphrase_popup(app, size, f);
     }
-    else if matches!(app.current_panel, Panel::EnterX25519Key) {
-        make_enter_x25519_popup(app, size, f);
+    else if matches!(app.current_panel, Panel::EnterECCKey(_)) {
+        make_enter_ecc_popup(app, size, f);
     }
     else if matches!(app.current_panel, Panel::SelectDecrEccKeyType) {
         make_select_ecc_key_type_popup(app, size, f);
@@ -331,7 +331,7 @@ fn make_enter_passphrase_popup<B: Backend>(app: &App, size: Rect, f: &mut Frame<
     );
 }
 
-fn make_enter_x25519_popup<B: Backend>(app: &App, size: Rect, f: &mut Frame<B>) {
+fn make_enter_ecc_popup<B: Backend>(app: &App, size: Rect, f: &mut Frame<B>) {
     let block = Block::default().style(Style::default().add_modifier(Modifier::DIM));
     f.render_widget(block, size);
     let area = centered_rect(app.input.max_len as u16 + 2, 3, size);
@@ -339,7 +339,7 @@ fn make_enter_x25519_popup<B: Backend>(app: &App, size: Rect, f: &mut Frame<B>) 
 
     let input = Paragraph::new(app.input.value.as_ref())
         .style(Style::default().fg(Color::Yellow))
-        .block(Block::default().borders(Borders::ALL).title("Enter X25519 hex key"));
+        .block(Block::default().borders(Borders::ALL).title("Enter ECC hex key"));
     f.render_widget(input, area);
     f.set_cursor(
         // Put cursor past the end of the input text
