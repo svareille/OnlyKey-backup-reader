@@ -23,10 +23,10 @@ Backups for the OnlyKey Duo should work too, but not tested.
 
 ### Backup decoding
 - [x] Read passphrase-protected backup  
-- [ ] Read ECC-protected backup
+- [x] Read ECC-protected backup
   - [x] With X25519 key
-  - [ ] With NIST256P1 key
-  - [ ] With SECP256K1 key
+  - [x] With NIST256P1 key
+  - [x] With SECP256K1 key
 - [ ] Read RSA-protected backup  
 
 ### Data displayed
@@ -45,10 +45,10 @@ For both profiles:
 
 For other data:
 
-- [ ] ECC private keys
-  - [x] X25519 (currently only the first 16 keys (101-116))
-  - [ ] NIST256P1
-  - [ ] SECP256K1
+- [x] ECC private keys (currently only the first 16 keys (101-116))
+  - [x] X25519
+  - [x] NIST256P1
+  - [x] SECP256K1
 - [ ] HMACSHA1
 - [ ] RSA private keys
 - [ ] FIDO keys

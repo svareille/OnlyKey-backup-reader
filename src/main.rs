@@ -22,7 +22,7 @@ mod res {
     pub mod text;
 }
 
-use okbr::{OnlyKey, OTP, BackupError};
+use okbr::{OnlyKey, OTP, BackupError, ECCKeyType};
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -55,7 +55,7 @@ enum Panel {
     Onlykey,
     ProfileTab,
     SelectDecrKeyType,
-    EnterX25519Key,
+    EnterECCKey(ECCKeyType),
     SelectDecrEccKeyType,
     General,
     #[allow(dead_code)]
@@ -139,8 +139,8 @@ impl<'a> App<'a> {
             ], Some(0)),
             decr_ecc_key_items: StatefulList::with_items(vec![
                 "X25519",
-                //"NIST256P1",
-                //"SECP256K1",
+                "NIST256P1",
+                "SECP256K1",
             ], Some(0)),
 
             current_profile: 0,
@@ -176,7 +176,7 @@ impl<'a> App<'a> {
     }
 
     pub fn next_panel(&mut self) {
-        self.current_panel = match self.current_panel {
+        self.current_panel = match &self.current_panel {
             Panel::ProfileTab => Panel::HelpButton,
             Panel::Onlykey => Panel::ProfileTab,
             Panel::SelectDecrKeyType => Panel::SelectDecrKeyType,
@@ -186,13 +186,13 @@ impl<'a> App<'a> {
             Panel::HelpPopup => Panel::HelpPopup,
             Panel::StatusBar => Panel::StatusBar,
             Panel::SelectDecrEccKeyType => Panel::SelectDecrEccKeyType,
-            Panel::EnterX25519Key => Panel::EnterX25519Key,
+            Panel::EnterECCKey(t) => Panel::EnterECCKey(t.clone()),
             Panel::General => Panel::ProfileTab,
         };
     }
 
     pub fn previous_panel(&mut self) {
-        self.current_panel = match self.current_panel {
+        self.current_panel = match &self.current_panel {
             Panel::ProfileTab => match self.current_profile {0 | 1 => Panel::Onlykey, 2 => Panel::General, _ => Panel::ProfileTab},
             Panel::Onlykey => Panel::HelpButton,
             Panel::SelectDecrKeyType => Panel::SelectDecrKeyType,
@@ -202,7 +202,7 @@ impl<'a> App<'a> {
             Panel::HelpPopup => Panel::HelpPopup,
             Panel::StatusBar => Panel::StatusBar,
             Panel::SelectDecrEccKeyType => Panel::SelectDecrEccKeyType,
-            Panel::EnterX25519Key => Panel::EnterX25519Key,
+            Panel::EnterECCKey(t) => Panel::EnterECCKey(t.clone()),
             Panel::General => Panel::HelpButton,
         };
     }
@@ -381,19 +381,23 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                 },
                                 KeyCode::Enter => {
                                     match app.decr_ecc_key_items.state.selected() {
-                                        Some(0) => {
+                                        Some(0) => { // X25519
                                             info!("X25519 ECC key type selected");
-                                            app.current_panel = Panel::EnterX25519Key;
+                                            app.current_panel = Panel::EnterECCKey(ECCKeyType::X25519);
                                             app.input_mode = InputMode::Editing;
                                             app.input.max_len = 64;
-                                        }, // X25519
+                                        }, 
                                         Some(1) => { // NIST256P1
                                             info!("NIST256P1 ECC key type selected");
-                                            todo!();
+                                            app.current_panel = Panel::EnterECCKey(ECCKeyType::NIST256P1);
+                                            app.input_mode = InputMode::Editing;
+                                            app.input.max_len = 64;
                                         }, 
                                         Some(2) => { // SECP256K1
                                             info!("SECP256K1 ECC key type selected");
-                                            todo!();
+                                            app.current_panel = Panel::EnterECCKey(ECCKeyType::SECP256K1);
+                                            app.input_mode = InputMode::Editing;
+                                            app.input.max_len = 64;
                                         }, 
                                         None => {},
                                         Some(n) => {
@@ -677,7 +681,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                     },
                     InputMode::Editing => match key.code {
                         KeyCode::Enter => {
-                            match app.current_panel {
+                            match &app.current_panel {
                                 Panel::EnterDecrPass => {
                                     debug!("Decryption passphrase entered");
                                     let mut ok = OnlyKey::new();
@@ -715,8 +719,8 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                         }
                                     }
                                 }
-                                Panel::EnterX25519Key => {
-                                    debug!("Decryption X25519 key has been entered");
+                                Panel::EnterECCKey(key_type) => {
+                                    debug!("Decryption ECC key has been entered");
                                     let mut ok = OnlyKey::new();
                                     let hex_key: String = app.input.drain();
                                     let hex_key = hex_key.to_ascii_lowercase();
@@ -724,13 +728,13 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                         Ok(key) => {
                                             if key.len() != 32 {
                                                 error!("Key must be 32 bytes, got {}", key.len());
-                                                app.set_error(&format!("Key must be 32 bytes (64 hex characters), got {}", key.len()))
+                                                app.set_error(&format!("Key must be 32 bytes (64 hex characters), got {}.", key.len()))
                                             } else {
-                                                if let Err(e) =  ok.set_backup_ecc_key(key, okbr::ECCKeyType::X25519) {
+                                                if let Err(e) =  ok.set_backup_ecc_key(key, key_type.clone()) {
                                                     error!("Problem setting ECC key: {}", e);
                                                     return Err(e);
                                                 }
-                                                info!("X25519 key parsed");
+                                                info!("ECC key parsed");
                                                 match fs::read_to_string(&app.backup_path) {
                                                     Ok(backup) => {
                                                         match ok.load_backup(&backup) {
@@ -744,7 +748,10 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                                             Err(e) => {
                                                                 error!("Failed to load backup: {}", e);
                                                                 match e.downcast_ref::<BackupError>() {
-                                                                    Some(BackupError::KeyTypeNoMatch) | Some(BackupError::UnexpecteByte(_))  | Some(BackupError::UnexpectedSlotNumber(_))=> {
+                                                                    Some(BackupError::KeyTypeNoMatch) => {
+                                                                        app.set_error("Failed to load backup: The ECC key type provided does not match the one used for encryption.");
+                                                                    }
+                                                                    Some(BackupError::UnexpecteByte(_))  | Some(BackupError::UnexpectedSlotNumber(_))=> {
                                                                         app.set_error("Failed to load backup. Retry with another ECC key. If the loading keep failing, the backup may be unusable.");
                                                                     },
                                                                     Some(_) | None => {
