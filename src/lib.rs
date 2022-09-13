@@ -1,4 +1,6 @@
 use anyhow::{anyhow, Result, bail, ensure};
+use num_bigint_dig::ModInverse;
+use rsa::{RsaPrivateKey, BigUint};
 use thiserror::Error;
 use data_encoding::{BASE32, BASE64};
 use log::{debug, info, error, trace, warn};
@@ -39,6 +41,8 @@ pub enum BackupError{
     UnexpectedSlotNumber(u8),
     #[error("unexpected byte `0x{0:02x}`")]
     UnexpecteByte(u8),
+    #[error("computation error `{0}`")]
+    ComputationError(String)
 }
 
 #[derive(Clone)]
@@ -144,15 +148,23 @@ pub trait KeySlot {
     fn public_key(&self) -> Vec<u8>;
 }
 
-#[derive(Clone,Default)]
+#[derive(Clone)]
 #[derive(PartialEq, Debug)]
 pub struct RSAKeySlot {
     pub label: String,
+    pub feature: KeyFeature,
+    pub private_key: RsaPrivateKey,
 }
 
 impl RSAKeySlot {
     pub fn new() -> Self {
-        Default::default()
+        RSAKeySlot { label: String::new(), feature: KeyFeature::DECRYPTION, private_key: RsaPrivateKey::from_components(BigUint::from_slice(&[]), BigUint::from_slice(&[]), BigUint::from_slice(&[]), vec![]) }
+    }
+}
+
+impl Default for RSAKeySlot {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -357,7 +369,7 @@ pub enum BackupKeyID {
 #[derive(PartialEq, Debug)]
 enum BackupKey {
     Ecc(ECCKeySlot),
-    Rsa(RSAKeySlot),
+    Rsa(Box<RSAKeySlot>),
     None,
 }
 
@@ -471,7 +483,7 @@ impl OnlyKey {
                 Some(key)
             },
             BackupKey::Rsa(key) => {
-                Some(key)
+                Some(&(**key))
             },
             BackupKey::None => None,
         }
@@ -509,12 +521,45 @@ impl OnlyKey {
         Ok(())
     }
 
-    pub fn _set_backup_rsa_key(&mut self, _key: Vec<u8>) {
+    /// Set the given RSA private key as the backup key.
+    /// 
+    /// The key must be the `p` and `q` factors concatenated as bytes.
+    /// 
+    /// Example:
+    /// ```
+    /// p = 01010101
+    /// q = 02020202
+    /// key = 0101010102020202
+    /// ```
+    /// 
+    /// # Errors
+    /// 
+    /// Returns [`BackupError::ComputationError`] if the `d` value couldn't be computed.
+    /// 
+    pub fn set_backup_rsa_key(&mut self, key: Vec<u8>) -> Result<()> {
         trace!("Setting RSA backup key");
+        let key_length = key.len();
+
+        let p = BigUint::from_bytes_be(&key[0..key_length/2]);
+        let q = BigUint::from_bytes_be(&key[key_length/2..]);
+        let e = BigUint::parse_bytes(b"65537", 10).unwrap();
+        let n = p.clone()*q.clone();
+        let primes = vec![p.clone(), q.clone()];
+        let d = match e.clone().mod_inverse((p-1u32)*(q-1u32)).and_then(|d| d.to_biguint()) {
+            Some(d) => d,
+            None => {
+                error!("Could not find the modular inverse of e for provided p and q for key");
+                bail!(BackupError::ComputationError("Could not find the modular inverse of e for provided key".to_owned()));
+            },
+        };
+        let private_key = RsaPrivateKey::from_components(n, e, d, primes);
         let rsa_key = RSAKeySlot {
             label: String::new(),
+            feature: KeyFeature::DECRYPTION | KeyFeature::BACKUP,
+            private_key,
         };
-        self.backup_key = BackupKey::Rsa(rsa_key);
+        self.backup_key = BackupKey::Rsa(Box::new(rsa_key));
+        Ok(())
     }
 
     /// Loads the provided base64-encoded backup.
@@ -795,21 +840,39 @@ impl OnlyKey {
                         }
                         1..=4 => {
                             // RSA
-                            warn!("Ignoring RSA key {}", slot_nb);
-                            // TODO
                             let r#type = decrypted[index];
                             index += 1;
 
-                            match r#type & 0x0F {
-                                1 => index += 128,
-                                2 => index += 256,
-                                3 => index += 354,
-                                4 => index += 512,
-                                n => {
-                                    error!("Unknown RSA key type 0x{:02x}", n);
-                                    bail!(BackupError::UnexpecteByte(n))
-                                },
+                            if self.rsa_keys[slot_nb as usize].is_none() {
+                                self.rsa_keys[slot_nb as usize] = Some(RSAKeySlot::new());
                             }
+
+                            let mut rsa_key = self.rsa_keys[slot_nb as usize].as_mut().unwrap();
+
+                            rsa_key.feature = match KeyFeature::from_bits(r#type & 0xF0) {
+                                Some(feature) => feature,
+                                None => {
+                                    error!("Unknown RSA key feature 0x{:02x}", r#type & 0xF0);
+                                    bail!(BackupError::UnexpecteByte(r#type))
+                                },
+                            };
+
+                            let key_length = (r#type & 0x0F) as usize * 128;
+
+                            let p = BigUint::from_bytes_be(&decrypted[index..index+key_length/2]);
+                            let q = BigUint::from_bytes_be(&decrypted[index+key_length/2..index+key_length]);
+                            let e = BigUint::parse_bytes(b"65537", 10).unwrap();
+                            let n = p.clone()*q.clone();
+                            let primes = vec![p.clone(), q.clone()];
+                            let d = match e.clone().mod_inverse((p-1u32)*(q-1u32)).and_then(|d| d.to_biguint()) {
+                                Some(d) => d,
+                                None => {
+                                    error!("Could not find the modular inverse of e for provided p and q for key in slot {}", slot_nb);
+                                    bail!(BackupError::ComputationError("Could not find the modular inverse of e for provided key".to_owned()));
+                                },
+                            };
+                            rsa_key.private_key = RsaPrivateKey::from_components(n, e, d, primes);
+                            index += key_length;
                         }
                         101..=116 => {
                             // ECC
