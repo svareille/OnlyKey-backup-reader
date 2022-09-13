@@ -209,7 +209,7 @@ impl KeySlot for ECCKeySlot {
     fn decrypt_backup(&self, backup: Vec<u8>) -> Result<Vec<u8>> {
         let backup_type = backup.last().ok_or_else(||anyhow!(BackupError::EmptyBackup))?;
 
-        if self.r#type.clone() as u8 != backup_type - 100 {
+        if self.r#type.clone() as u16 + 100 != *backup_type as u16 {
             error!("Key type used for backup does not match");
             bail!(BackupError::KeyTypeNoMatch)
         }
