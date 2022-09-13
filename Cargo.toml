@@ -28,6 +28,8 @@ generic-array = "0.14"
 google-authenticator = "0.3"
 log = "0.4"
 num_enum = "0.5"
+num-bigint-dig = "*"
+rsa = "*"
 salsa20 = { version = "0.9", features = ["hsalsa20"] }
 sha2 = "0.10"
 thiserror = "1.0"
