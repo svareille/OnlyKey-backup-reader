@@ -10,7 +10,7 @@ use crate::res;
 
 use onlykey::{OnlyKeyWidget, AccountDataWidget};
 
-use self::onlykey::{GeneralSelectionWidget, EccDataWidget};
+use self::onlykey::{GeneralSelectionWidget, EccDataWidget, split_string_in_chunks};
 use crate::SelectedGeneral;
 
 pub(crate) fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
@@ -108,8 +108,14 @@ pub(crate) fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     else if matches!(app.current_panel, Panel::EnterECCKey(_)) {
         make_enter_ecc_popup(app, size, f);
     }
+    else if matches!(app.current_panel, Panel::EnterRsaKey(_)) {
+        make_enter_rsa_popup(app, size, f);
+    }
     else if matches!(app.current_panel, Panel::SelectDecrEccKeyType) {
         make_select_ecc_key_type_popup(app, size, f);
+    }
+    else if matches!(app.current_panel, Panel::SelectDecrRsaKeyType) {
+        make_select_rsa_key_type_popup(app, size, f);
     }
     else if matches!(app.current_panel, Panel::HelpPopup) {
         make_help_popup(size, f);
@@ -349,6 +355,34 @@ fn make_enter_ecc_popup<B: Backend>(app: &App, size: Rect, f: &mut Frame<B>) {
     );
 }
 
+fn make_enter_rsa_popup<B: Backend>(app: &App, size: Rect, f: &mut Frame<B>) {
+    let block = Block::default().style(Style::default().add_modifier(Modifier::DIM));
+    f.render_widget(block, size);
+    let width = size.width.min(app.input.max_len as u16 + 2);
+    let height = (app.input.max_len as f32 / (width-2) as f32).ceil() as u16 + 2;
+    let area = centered_rect(width, height, size);
+    f.render_widget(Clear, area); //this clears out the background
+
+    let (cursor_x, cursor_y) = {
+        let x = area.x + 1 + (app.input.cursor as u16 % (width-2));
+        let y = area.y + 1 + (app.input.cursor as u16 / (width-2));
+        (x,y)
+    };
+
+     let (text, _) = split_string_in_chunks(&app.input.value, (width-2).into());
+
+    let input = Paragraph::new(text)
+        .style(Style::default().fg(Color::Yellow))
+        .block(Block::default().borders(Borders::ALL).title("Enter RSA hex key, as the p and q parameters concatenated"));
+    f.render_widget(input, area);
+    f.set_cursor(
+        // Put cursor past the end of the input text
+        cursor_x,
+        // Move one line down, from the border to the input line
+        cursor_y,
+    );
+}
+
 fn make_select_ecc_key_type_popup<B: Backend>(app: &mut App, size: Rect, f: &mut Frame<B>) {
     let block = Block::default().style(Style::default().add_modifier(Modifier::DIM));
     f.render_widget(block, size);
@@ -372,6 +406,31 @@ fn make_select_ecc_key_type_popup<B: Backend>(app: &mut App, size: Rect, f: &mut
         .highlight_style(Style::default().add_modifier(Modifier::BOLD | Modifier::REVERSED))
         .highlight_symbol(">>");
     f.render_stateful_widget(list, area, &mut app.decr_ecc_key_items.state);
+}
+
+fn make_select_rsa_key_type_popup<B: Backend>(app: &mut App, size: Rect, f: &mut Frame<B>) {
+    let block = Block::default().style(Style::default().add_modifier(Modifier::DIM));
+    f.render_widget(block, size);
+
+    let items: Vec<ListItem> = app
+        .decr_rsa_key_items
+        .items
+        .iter()
+        .map(|s| {
+            let lines = vec![Spans::from(*s)];
+            ListItem::new(lines).style(Style::default())
+        })
+        .collect();
+
+    let area = centered_rect(25, 2+items.len() as u16, size);
+    f.render_widget(Clear, area); //this clears out the background
+    
+    let list = List::new(items)
+        .block(Block::default().title("Select RSA key type").borders(Borders::ALL))
+        .style(Style::default().fg(Color::White))
+        .highlight_style(Style::default().add_modifier(Modifier::BOLD | Modifier::REVERSED))
+        .highlight_symbol(">>");
+    f.render_stateful_widget(list, area, &mut app.decr_rsa_key_items.state);
 }
 
 fn make_help_popup<B: Backend>(size: Rect, f: &mut Frame<B>) {

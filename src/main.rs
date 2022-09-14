@@ -56,7 +56,9 @@ enum Panel {
     ProfileTab,
     SelectDecrKeyType,
     EnterECCKey(ECCKeyType),
+    EnterRsaKey(u16),
     SelectDecrEccKeyType,
+    SelectDecrRsaKeyType,
     General,
     #[allow(dead_code)]
     StatusBar,
@@ -95,6 +97,8 @@ struct App<'a> {
     decr_key_items: StatefulList<&'a str>,
     /// Decryption ECC key types
     decr_ecc_key_items: StatefulList<&'a str>,
+    /// Decryption RSA key types
+    decr_rsa_key_items: StatefulList<&'a str>,
 
     /// Current profile to work on
     pub current_profile: usize,
@@ -133,7 +137,7 @@ impl<'a> App<'a> {
             backup_path: PathBuf::default(),
             onlykey: None,
             decr_key_items: StatefulList::with_items(vec![
-                //"RSA",
+                "RSA",
                 "ECC",
                 "Passphrase",
             ], Some(0)),
@@ -141,6 +145,12 @@ impl<'a> App<'a> {
                 "X25519",
                 "NIST256P1",
                 "SECP256K1",
+            ], Some(0)),
+            decr_rsa_key_items: StatefulList::with_items(vec![
+                "1024",
+                "2048",
+                "3072",
+                "4096",
             ], Some(0)),
 
             current_profile: 0,
@@ -186,7 +196,9 @@ impl<'a> App<'a> {
             Panel::HelpPopup => Panel::HelpPopup,
             Panel::StatusBar => Panel::StatusBar,
             Panel::SelectDecrEccKeyType => Panel::SelectDecrEccKeyType,
+            Panel::SelectDecrRsaKeyType => Panel::SelectDecrRsaKeyType,
             Panel::EnterECCKey(t) => Panel::EnterECCKey(t.clone()),
+            Panel::EnterRsaKey(t) => Panel::EnterRsaKey(*t),
             Panel::General => Panel::ProfileTab,
         };
     }
@@ -202,8 +214,10 @@ impl<'a> App<'a> {
             Panel::HelpPopup => Panel::HelpPopup,
             Panel::StatusBar => Panel::StatusBar,
             Panel::SelectDecrEccKeyType => Panel::SelectDecrEccKeyType,
+            Panel::SelectDecrRsaKeyType => Panel::SelectDecrRsaKeyType,
             Panel::EnterECCKey(t) => Panel::EnterECCKey(t.clone()),
             Panel::General => Panel::HelpButton,
+            Panel::EnterRsaKey(t) => Panel::EnterRsaKey(*t),
         };
     }
 
@@ -304,10 +318,12 @@ fn setup_logger(level: log::LevelFilter) -> Result<(), fern::InitError> {
     fern::Dispatch::new()
         .format(|out, message, record| {
             out.finish(format_args!(
-                "{}[{}][{}] {}",
-                chrono::Local::now().format("[%Y-%m-%d][%H:%M:%S]"),
+                "{}[{}]{} [{}:{}] {}",
+                chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
                 record.target(),
                 record.level(),
+                record.file().unwrap_or("?"),
+                record.line().map(|l| l.to_string()).unwrap_or_default(),
                 message
             ))
         })
@@ -348,15 +364,15 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                 },
                                 KeyCode::Enter => {
                                     match app.decr_key_items.state.selected() {
-                                        /*Some(0) => {
+                                        Some(0) => { // RSA
                                             info!("RSA key type selected");
-                                            todo!()
-                                        }, // RSA*/
-                                        Some(0) => { // ECC
+                                            app.current_panel = Panel::SelectDecrRsaKeyType;
+                                        }, 
+                                        Some(1) => { // ECC
                                             info!("ECC key type selected");
                                             app.current_panel = Panel::SelectDecrEccKeyType;
                                         }, 
-                                        Some(1) => { // Passphrase
+                                        Some(2) => { // Passphrase
                                             info!("Passphrase key type selected");
                                             app.current_panel = Panel::EnterDecrPass;
                                             app.input_mode = InputMode::Editing;
@@ -406,6 +422,54 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                         },
                                     }
                                     app.panel_history.push(Panel::SelectDecrEccKeyType);
+                                },
+                                KeyCode::Esc => {
+                                    if let Some(panel) = app.panel_history.pop() {
+                                        app.current_panel = panel;
+                                    }
+                                },
+                                _ => {}
+                            }
+                            Panel::SelectDecrRsaKeyType => match key.code {
+                                KeyCode::Down => {
+                                    app.decr_rsa_key_items.next();
+                                },
+                                KeyCode::Up => {
+                                    app.decr_rsa_key_items.previous();
+                                },
+                                KeyCode::Enter => {
+                                    match app.decr_rsa_key_items.state.selected() {
+                                        Some(0) => { // 1024
+                                            info!("RSA 1024 key selected");
+                                            app.current_panel = Panel::EnterRsaKey(1024);
+                                            app.input_mode = InputMode::Editing;
+                                            app.input.max_len = 1024;
+                                        }, 
+                                        Some(1) => { // 2048
+                                            info!("RSA 2018 key selected");
+                                            app.current_panel = Panel::EnterRsaKey(2048);
+                                            app.input_mode = InputMode::Editing;
+                                            app.input.max_len = 1024;
+                                        }, 
+                                        Some(2) => { // 3072
+                                            info!("RSA 3072 key selected");
+                                            app.current_panel = Panel::EnterRsaKey(3072);
+                                            app.input_mode = InputMode::Editing;
+                                            app.input.max_len = 1024;
+                                        }, 
+                                        Some(3) => { // 4096
+                                            info!("RSA 4096 key selected");
+                                            app.current_panel = Panel::EnterRsaKey(4096);
+                                            app.input_mode = InputMode::Editing;
+                                            app.input.max_len = 1024;
+                                        }, 
+                                        None => {},
+                                        Some(n) => {
+                                            error!("Problem with decryption ecc key selection: unexpected selection {}", n);
+                                            bail!("Problem with decryption ecc key selection: unexpected selection {}", n);
+                                        },
+                                    }
+                                    app.panel_history.push(Panel::SelectDecrRsaKeyType);
                                 },
                                 KeyCode::Esc => {
                                     if let Some(panel) = app.panel_history.pop() {
@@ -775,6 +839,63 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                         },
                                     }
                                 },
+                                Panel::EnterRsaKey(key_type) => {
+                                    let key_type = *key_type;
+                                    debug!("Decryption RSA {} key has been entered", key_type);
+                                    let mut ok = OnlyKey::new();
+                                    let hex_key: String = app.input.drain();
+                                    let hex_key = hex_key.to_ascii_lowercase();
+                                    match HEXLOWER.decode(hex_key.as_bytes()) {
+                                        Ok(key) => {
+                                            if key.len() != (key_type/8).into() {
+                                                error!("Key must be {} bytes, got {}", key_type/8, key.len());
+                                                app.set_error(&format!("Key must be {} bytes ({} hex characters), got {}.", key_type/8, key_type/4, key.len()));
+                                            } else {
+                                                if let Err(e) =  ok.set_backup_rsa_key(key) {
+                                                    error!("Problem setting RSA key: {}", e);
+                                                    return Err(e);
+                                                }
+                                                info!("RSA key parsed");
+                                                match fs::read_to_string(&app.backup_path) {
+                                                    Ok(backup) => {
+                                                        match ok.load_backup(&backup) {
+                                                            Ok(()) => {
+                                                                info!("Backup decoded");
+                                                                app.onlykey = Some(ok);
+                                                                app.panel_history.pop();
+                                                                app.current_panel = Panel::ProfileTab;
+                                                                app.input_mode = InputMode::Normal;
+                                                            }
+                                                            Err(e) => {
+                                                                error!("Failed to load backup: {}", e);
+                                                                match e.downcast_ref::<BackupError>() {
+                                                                    Some(BackupError::KeyTypeNoMatch) => {
+                                                                        app.set_error("Failed to load backup: The RSA key type provided does not match the one used for encryption.");
+                                                                    }
+                                                                    Some(BackupError::UnexpecteByte(_))  | Some(BackupError::UnexpectedSlotNumber(_))=> {
+                                                                        app.set_error("Failed to load backup. Retry with another RSA key. If the loading keep failing, the backup may be unusable.");
+                                                                    },
+                                                                    Some(_) | None => {
+                                                                        bail!("Could not load backup: {}", e);
+                                                                    },
+                                                                }
+                                                            }
+                                                        }
+                                                    },
+                                                    Err(e) => {
+                                                        error!("Could not read provided file: {}", e);
+                                                        bail!(e);
+                                                    }
+                                                }
+                                            }
+                                            
+                                        },
+                                        Err(e) => {
+                                            error!("Wrong key format: {}", e);
+                                            app.set_error(&format!("Wrong key format: {}.\nProvided key must be a {} character hexadecimal string.", e, key_type/4));
+                                        },
+                                    }
+                                }
                                 _ => {}
                             }
                             //app.messages.push(app.input.drain(..).collect());
