@@ -398,7 +398,7 @@ impl<'a> Widget for AccountDataWidget<'a> {
     }
 }
 
-fn split_string_in_chunks(instr: &str, chunk_size: usize) -> (String, usize) {
+pub fn split_string_in_chunks(instr: &str, chunk_size: usize) -> (String, usize) {
     let mut height = 1;
     if instr.len() > chunk_size {
         height = instr.len() / chunk_size as usize + 1;

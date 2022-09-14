@@ -153,12 +153,14 @@ pub trait KeySlot {
 pub struct RSAKeySlot {
     pub label: String,
     pub feature: KeyFeature,
-    pub private_key: RsaPrivateKey,
+    pub r#type: u16,
+    pub private_key: Option<RsaPrivateKey>,
 }
 
 impl RSAKeySlot {
     pub fn new() -> Self {
-        RSAKeySlot { label: String::new(), feature: KeyFeature::DECRYPTION, private_key: RsaPrivateKey::from_components(BigUint::from_slice(&[]), BigUint::from_slice(&[]), BigUint::from_slice(&[]), vec![]) }
+        trace!("Creating new RSAKeySlot");
+        RSAKeySlot { label: String::new(), feature: KeyFeature::DECRYPTION, r#type: 0, private_key: None }
     }
 }
 
@@ -169,8 +171,50 @@ impl Default for RSAKeySlot {
 }
 
 impl KeySlot for RSAKeySlot {
-    fn decrypt_backup(&self, _backup: Vec<u8>) -> Result<Vec<u8>> {
-        unimplemented!()
+    fn decrypt_backup(&self, backup: Vec<u8>) -> Result<Vec<u8>> {
+        trace!("Decrypting backup with RSA key");
+        let backup_type = backup.last().ok_or_else(||anyhow!(BackupError::EmptyBackup))?;
+
+        if self.r#type / 128 != *backup_type as u16 {
+            error!("Key type used for backup does not match");
+            bail!(BackupError::KeyTypeNoMatch)
+        }
+
+        trace!("RSA keys match");
+
+        let payload_len = backup.len() - 1 - self.r#type as usize;
+
+        let encrypted_key = &backup[payload_len..payload_len+self.r#type as usize];
+
+        if self.private_key.is_none() {
+            error!("RSA key is not set");
+            bail!(BackupError::NoKeySet)
+        }
+
+        let aes_key = self.private_key.as_ref().unwrap().decrypt(rsa::PaddingScheme::PKCS1v15Encrypt, encrypted_key)?;
+
+        trace!("AES key decrypted");
+
+        let cipher = match aes_gcm::Aes256Gcm::new_from_slice(&aes_key) {
+            Ok(cipher) => cipher,
+            Err(e) => {
+                error!("Cound not create AES cipher: {}", e);
+                bail!(e);
+            },
+        };
+
+        trace!("Cipher created");
+        let nonce = aes_gcm::Nonce::from_slice(b"BACKUP12345\0");
+
+        // The `decrypt` method of Aes256Gcm check the tag's validity.
+        // However we don't have the tag, thus the `decrypt` method always fail.
+        // With AES, encryption and decryption are the same algorithm. We thus "encrypt" our data to
+        // decrypt it, then discard the generated Tag (last 16 bytes).
+        let decrypted = cipher.encrypt(nonce, &backup[..payload_len]);
+        let mut decrypted = decrypted.map_err(|e| {anyhow!(e)})?;
+        decrypted.resize(payload_len, 0);
+
+        Ok(decrypted)
     }
     fn public_key(&self) -> Vec<u8> {
         unimplemented!()
@@ -542,7 +586,7 @@ impl OnlyKey {
 
         let p = BigUint::from_bytes_be(&key[0..key_length/2]);
         let q = BigUint::from_bytes_be(&key[key_length/2..]);
-        let e = BigUint::parse_bytes(b"65537", 10).unwrap();
+        let e = BigUint::from(65537u32);
         let n = p.clone()*q.clone();
         let primes = vec![p.clone(), q.clone()];
         let d = match e.clone().mod_inverse((p-1u32)*(q-1u32)).and_then(|d| d.to_biguint()) {
@@ -552,10 +596,11 @@ impl OnlyKey {
                 bail!(BackupError::ComputationError("Could not find the modular inverse of e for provided key".to_owned()));
             },
         };
-        let private_key = RsaPrivateKey::from_components(n, e, d, primes);
+        let private_key = Some(RsaPrivateKey::from_components(n, e, d, primes));
         let rsa_key = RSAKeySlot {
             label: String::new(),
             feature: KeyFeature::DECRYPTION | KeyFeature::BACKUP,
+            r#type: key.len() as u16,
             private_key,
         };
         self.backup_key = BackupKey::Rsa(Box::new(rsa_key));
@@ -840,12 +885,18 @@ impl OnlyKey {
                         }
                         1..=4 => {
                             // RSA
+                            debug!("Parsing RSA key {}", slot_nb);
+                            slot_nb -= 1;
                             let r#type = decrypted[index];
+                            trace!("Pass");
                             index += 1;
 
                             if self.rsa_keys[slot_nb as usize].is_none() {
                                 self.rsa_keys[slot_nb as usize] = Some(RSAKeySlot::new());
                             }
+                            trace!("Pass");
+
+                            trace!("Pass1");
 
                             let mut rsa_key = self.rsa_keys[slot_nb as usize].as_mut().unwrap();
 
@@ -857,13 +908,20 @@ impl OnlyKey {
                                 },
                             };
 
+                            trace!("Pass2");
+
+                            rsa_key.r#type = (r#type & 0x0F) as u16 * 1024;
+
                             let key_length = (r#type & 0x0F) as usize * 128;
+
+                            trace!("Computing p, q, e and n");
 
                             let p = BigUint::from_bytes_be(&decrypted[index..index+key_length/2]);
                             let q = BigUint::from_bytes_be(&decrypted[index+key_length/2..index+key_length]);
-                            let e = BigUint::parse_bytes(b"65537", 10).unwrap();
+                            let e = BigUint::from(65537u32);
                             let n = p.clone()*q.clone();
                             let primes = vec![p.clone(), q.clone()];
+                            trace!("Computing d");
                             let d = match e.clone().mod_inverse((p-1u32)*(q-1u32)).and_then(|d| d.to_biguint()) {
                                 Some(d) => d,
                                 None => {
@@ -871,7 +929,8 @@ impl OnlyKey {
                                     bail!(BackupError::ComputationError("Could not find the modular inverse of e for provided key".to_owned()));
                                 },
                             };
-                            rsa_key.private_key = RsaPrivateKey::from_components(n, e, d, primes);
+                            rsa_key.private_key = Some(RsaPrivateKey::from_components(n, e, d, primes));
+                            trace!("RSA key created");
                             index += key_length;
                         }
                         101..=116 => {
