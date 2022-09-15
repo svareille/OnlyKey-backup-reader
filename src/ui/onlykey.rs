@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc, Timelike};
 use data_encoding::HEXUPPER;
 use okbr::{AccountSlot, OTP, ECCKeySlot, KeyFeature, RSAKeySlot};
-use tui::{widgets::{Block, Widget, Table, Cell, Row, Gauge, Paragraph, Borders}, style::{Style, Color, Modifier}, layout::{Rect, Constraint, Alignment}, text::{Spans, Span}};
+use tui::{widgets::{Block, Widget, Table, Cell, Row, Gauge, Paragraph, Borders}, style::{Style, Color, Modifier}, layout::{Rect, Constraint, Alignment}, text::{Spans, Span, Text}};
 
 use crate::SelectedGeneral;
 
@@ -677,13 +677,23 @@ impl<'a> Widget for RsaDataWidget<'a> {
         let constraints = [Constraint::Length(12), Constraint::Length(max_value_width)];
 
         let private_key_row = {
-            let height: u16 = 1;
             let row = Row::new(vec![
                 Cell::from("Private Key:").style(field_name_style),
                 match &self.key {
                     Some(_) => {
-                        Cell::from(Spans::from(vec![
-                            Span::raw("Present. Press "), key_style("k"), Span::raw(" to copy the `p` and `q` factors as an hex string, or "), key_style("K"), Span::raw(" to copy the private key in PKCS#8 PEM format"),
+                        Cell::from(Text::from(vec![
+                            Spans::from(vec![
+                                Span::raw("Present. Press "), key_style("k"), Span::raw(" to copy the `p` and")
+                            ]),
+                            Spans::from(vec![
+                                Span::raw("`q` factors as an hex string, or "), key_style("K")
+                            ]),
+                            Spans::from(vec![
+                                Span::raw("to copy the private key in PKCS#8"),
+                            ]),
+                            Spans::from(vec![
+                                Span::raw("PEM format."),
+                            ])
                         ]))
                     }
                     None => {
@@ -692,7 +702,7 @@ impl<'a> Widget for RsaDataWidget<'a> {
                 },
                 ]
             );
-            row.height(height)
+            row.height(4)
         };
 
         let mut key_label = String::new();
