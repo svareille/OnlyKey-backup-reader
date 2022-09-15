@@ -419,16 +419,20 @@ pub(crate) struct GeneralSelectionWidget<'a> {
     /// A block to wrap the widget in
     block: Option<Block<'a>>,
 
-    /// Labels of the RSA slots
-    rsa_labels: [String; 4],
+    /// Labels of the RSA slots.
+    /// If the slot is not populated with a key, the label is None.
+    /// If the slot is populated with a key without label, the label is Some("")
+    rsa_labels: [Option<String>; 4],
     /// Labels of the ECC slots
-    ecc_labels: [String; 16],
+    /// /// If the slot is not populated with a key, the label is None.
+    /// If the slot is populated with a key without label, the label is Some("")
+    ecc_labels: [Option<String>; 16],
     /// Item selected
     selected: SelectedGeneral,
 }
 
 impl<'a> GeneralSelectionWidget<'a> {
-    pub fn new(rsa_labels: [String; 4], ecc_labels: [String; 16]) -> GeneralSelectionWidget<'a>
+    pub fn new(rsa_labels: [Option<String>; 4], ecc_labels: [Option<String>; 16]) -> GeneralSelectionWidget<'a>
     {
         GeneralSelectionWidget {
             block: None,
@@ -491,11 +495,14 @@ impl<'a> Widget for GeneralSelectionWidget<'a> {
         }*/
 
         for x in 0..4 {
-            let rsa_label = Paragraph::new(self.rsa_labels[x as usize].clone())
+            let rsa_label = &self.rsa_labels[x as usize];
+            let label = rsa_label.clone().unwrap_or_default();
+            
+            let rsa_label = Paragraph::new(label.clone())
                 .block(Block::default()
                     .title(format!("RSA {}", x+1))
                     .borders(Borders::ALL)
-                    .border_style(Style::default().fg(if self.selected == SelectedGeneral::Rsa(x+1){Color::LightRed} else {Color::White}))
+                    .border_style(Style::default().fg(if self.selected == SelectedGeneral::Rsa(x+1){Color::LightRed} else if rsa_label.is_some() {Color::White} else {Color::DarkGray}))
                 )
                 .style(Style::default())
                 .alignment(Alignment::Left);
@@ -507,11 +514,13 @@ impl<'a> Widget for GeneralSelectionWidget<'a> {
         for y in 0..4 {
             for x in 0..4 {
                 let slot_nb = x + y*4 + 1;
-                let ecc_label = Paragraph::new(self.ecc_labels[slot_nb as usize - 1].clone())
+                let ecc_label = &self.ecc_labels[slot_nb as usize - 1];
+                let label = ecc_label.clone().unwrap_or_default();
+                let ecc_label = Paragraph::new(label.clone())
                     .block(Block::default()
                         .title(format!("ECC {}", slot_nb))
                         .borders(Borders::ALL)
-                        .border_style(Style::default().fg(if self.selected == SelectedGeneral::Ecc(slot_nb){Color::LightRed} else {Color::White}))
+                        .border_style(Style::default().fg(if self.selected == SelectedGeneral::Ecc(slot_nb){Color::LightRed} else if ecc_label.is_some() {Color::White} else {Color::DarkGray}))
                     )
                     .style(Style::default())
                     .alignment(Alignment::Left);
