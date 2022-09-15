@@ -47,6 +47,7 @@ enum DecrKeyType {
     Pass,
 }
 
+#[derive(Clone)]
 enum Panel {
     #[allow(dead_code)]
     DataDisplay,
@@ -181,17 +182,10 @@ impl<'a> App<'a> {
     pub fn next_panel(&mut self) {
         self.current_panel = match &self.current_panel {
             Panel::ProfileTab => Panel::HelpButton,
-            Panel::Onlykey => Panel::ProfileTab,
-            Panel::SelectDecrKeyType => Panel::SelectDecrKeyType,
-            Panel::EnterDecrPass => Panel::EnterDecrPass,
-            Panel::DataDisplay => Panel::DataDisplay,
             Panel::HelpButton => match self.current_profile {0 | 1 => Panel::Onlykey, 2 => Panel::General, _ => Panel::ProfileTab},
-            Panel::HelpPopup => Panel::HelpPopup,
-            Panel::StatusBar => Panel::StatusBar,
-            Panel::SelectDecrEccKeyType => Panel::SelectDecrEccKeyType,
-            Panel::EnterECCKey(t) => Panel::EnterECCKey(t.clone()),
-            Panel::EnterRsaKey => Panel::EnterRsaKey,
+            Panel::Onlykey => Panel::ProfileTab,
             Panel::General => Panel::ProfileTab,
+            other => other.clone(),
         };
     }
 
@@ -199,16 +193,9 @@ impl<'a> App<'a> {
         self.current_panel = match &self.current_panel {
             Panel::ProfileTab => match self.current_profile {0 | 1 => Panel::Onlykey, 2 => Panel::General, _ => Panel::ProfileTab},
             Panel::Onlykey => Panel::HelpButton,
-            Panel::SelectDecrKeyType => Panel::SelectDecrKeyType,
-            Panel::EnterDecrPass => Panel::EnterDecrPass,
-            Panel::DataDisplay => Panel::DataDisplay,
-            Panel::HelpButton => Panel::ProfileTab,
-            Panel::HelpPopup => Panel::HelpPopup,
-            Panel::StatusBar => Panel::StatusBar,
-            Panel::SelectDecrEccKeyType => Panel::SelectDecrEccKeyType,
-            Panel::EnterECCKey(t) => Panel::EnterECCKey(t.clone()),
             Panel::General => Panel::HelpButton,
-            Panel::EnterRsaKey => Panel::EnterRsaKey,
+            Panel::HelpButton => Panel::ProfileTab,
+            other => other.clone(),
         };
     }
 
