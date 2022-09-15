@@ -232,25 +232,14 @@ fn make_onlykey_general_view<B: Backend>(app: &App, chunk: Rect, f: &mut Frame<B
             ].as_ref())
         .split(chunk);
     
-    let mut ecc_labels=
-    {
-        const S: String = String::new();
-        [S; 16]
-    };
+    let mut ecc_labels: [Option<String>; 16] = Default::default();
 
-    let mut rsa_labels=
-    {
-        const S: String = String::new();
-        [S; 4]
-    };
+    let mut rsa_labels: [Option<String>; 4] = Default::default();
 
     if let Some(ok) = &app.onlykey {
         for i in 1..=4 {
             rsa_labels[i-1] = match ok.get_rsa_key(i) {
-                Ok(key) => match key {
-                    Some(key) => key.label.to_string(),
-                    None => String::new(),
-                },
+                Ok(key) => key.map(|key| key.label.to_string()),
                 Err(e) => {
                     error!("Error while getting RSA key {}: {}", i, e);
                     return;
@@ -259,12 +248,7 @@ fn make_onlykey_general_view<B: Backend>(app: &App, chunk: Rect, f: &mut Frame<B
         }
         for i in 1..=16 {
             ecc_labels[i-1] = match ok.get_ecc_key(i) {
-                Ok(key) => {
-                    match key {
-                        Some(key) => key.label.to_string(),
-                        None => String::new(),
-                    }
-                }
+                Ok(key) => key.map(|key| key.label.to_string()),
                 Err(e) => {
                     error!("Error while getting ECC key {}: {}", i, e);
                     return;
