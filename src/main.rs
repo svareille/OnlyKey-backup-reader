@@ -5,6 +5,7 @@ use anyhow::{Result, bail, ensure};
 use clipboard::{ClipboardProvider, ClipboardContext};
 use data_encoding::{HEXLOWER, HEXUPPER};
 use log::{warn, error, info, debug};
+use rsa::pkcs8::ToPrivateKey;
 use tui::{
     backend::{CrosstermBackend, Backend},
     Terminal, widgets::ListState,
@@ -737,8 +738,82 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                                 }
                                             }
                                         },
-                                        SelectedGeneral::Rsa(i) => {
-
+                                        SelectedGeneral::Rsa(index) => {
+                                            match key.code {
+                                                KeyCode::Char('k') => {
+                                                    if let Some(ok) = &app.onlykey {
+                                                        match ok.get_rsa_key(index.into()) {
+                                                            Ok(key) => {
+                                                                debug!("Copying private key to clipboard");
+                                                                if let Some(key) = key {
+                                                                    let key = key.clone();
+                                                                    let private_key = match &key.private_key {
+                                                                        Some(key) => {
+                                                                            let p = &key.primes()[0];
+                                                                            let q = &key.primes()[1];
+                                                                            let mut raw = p.to_bytes_be();
+                                                                            raw.extend(q.to_bytes_be());
+                                                                            HEXUPPER.encode(&raw)
+                                                                        }
+                                                                        None => {"".to_owned()}
+                                                                    };
+                                                                    match app.set_clipboard(private_key) {
+                                                                        Ok(_) => {
+                                                                            app.clipboard_status_text = "Private key copied to clipboard".to_owned();
+                                                                        },
+                                                                        Err(e) => {
+                                                                            error!("Failed to copy private key to clipboard: {}", e);
+                                                                            app.set_error(&format!("Could not copy private key to clipboard: {}", e));
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                            Err(e) => {
+                                                                error!("Error while getting ECC key {}: {}", 1, e);
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                                KeyCode::Char('K') => {
+                                                    if let Some(ok) = &app.onlykey {
+                                                        match ok.get_rsa_key(index.into()) {
+                                                            Ok(key) => {
+                                                                debug!("Copying private key to clipboard");
+                                                                if let Some(key) = key {
+                                                                    let key = key.clone();
+                                                                    let private_key: String = match &key.private_key {
+                                                                        Some(key) => {
+                                                                            match key.to_pkcs8_pem() {
+                                                                                Ok(pem) => {
+                                                                                    pem.to_string()
+                                                                                },
+                                                                                Err(e) => {
+                                                                                    error!("Could not create PKCS#8 string: {}", e);
+                                                                                    "Could not create PKCS#8 PEM string".to_string()
+                                                                                },
+                                                                            }
+                                                                        }
+                                                                        None => {"".to_owned()}
+                                                                    };
+                                                                    match app.set_clipboard(private_key) {
+                                                                        Ok(_) => {
+                                                                            app.clipboard_status_text = "Private key copied to clipboard".to_owned();
+                                                                        },
+                                                                        Err(e) => {
+                                                                            error!("Failed to copy private key to clipboard: {}", e);
+                                                                            app.set_error(&format!("Could not copy private key to clipboard: {}", e));
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                            Err(e) => {
+                                                                error!("Error while getting ECC key {}: {}", 1, e);
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                                _ => {}
+                                            }
                                         }
                                     }
                                 }

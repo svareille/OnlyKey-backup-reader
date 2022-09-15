@@ -1,9 +1,6 @@
 use tui::{text::{Span, Spans}, style::{Style, Modifier}};
 
-
-fn key_style(text: &str) -> Span {
-    Span::styled(text, Style::default().add_modifier(Modifier::BOLD | Modifier::UNDERLINED))
-}
+use crate::ui::key_style;
 
 pub(crate) fn help_text() -> Vec<Spans<'static>> {
     vec![
