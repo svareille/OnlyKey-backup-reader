@@ -153,6 +153,7 @@ pub trait KeySlot {
 pub struct RSAKeySlot {
     pub label: String,
     pub feature: KeyFeature,
+    /// Key length: 1024, 2048, 3072, 4096
     pub r#type: u16,
     pub private_key: Option<RsaPrivateKey>,
 }
@@ -161,6 +162,31 @@ impl RSAKeySlot {
     pub fn new() -> Self {
         trace!("Creating new RSAKeySlot");
         RSAKeySlot { label: String::new(), feature: KeyFeature::DECRYPTION, r#type: 0, private_key: None }
+    }
+
+    pub fn new_from_p_q(p: &[u8], q: &[u8], label: &str, feature: KeyFeature) -> Result<Self> {
+        // Key length is p.len()*2 in bytes, thus p.len()*2*8 in bits
+        let keylen = p.len()*8*2;
+        let p = BigUint::from_bytes_be(p);
+        let q = BigUint::from_bytes_be(q);
+        let e = BigUint::from(65537u32);
+        let n = p.clone()*q.clone();
+        let primes = vec![p.clone(), q.clone()];
+        let d = match e.clone().mod_inverse((p-1u32)*(q-1u32)).and_then(|d| d.to_biguint()) {
+            Some(d) => d,
+            None => {
+                error!("Could not find the modular inverse of e for provided p and q for key");
+                bail!(BackupError::ComputationError("Could not find the modular inverse of e for provided key".to_owned()));
+            },
+        };
+        let private_key = Some(RsaPrivateKey::from_components(n, e, d, primes));
+
+        Ok(RSAKeySlot {
+            label: label.to_owned(),
+            feature,
+            r#type: keylen as u16,
+            private_key,
+        })
     }
 }
 
@@ -175,16 +201,16 @@ impl KeySlot for RSAKeySlot {
         trace!("Decrypting backup with RSA key");
         let backup_type = backup.last().ok_or_else(||anyhow!(BackupError::EmptyBackup))?;
 
-        if self.r#type / 128 != *backup_type as u16 {
+        if self.r#type / 1024 != *backup_type as u16 {
             error!("Key type used for backup does not match");
             bail!(BackupError::KeyTypeNoMatch)
         }
 
         trace!("RSA keys match");
 
-        let payload_len = backup.len() - 1 - self.r#type as usize;
+        let payload_len = backup.len() - 1 - (*backup_type as usize*128) ;
 
-        let encrypted_key = &backup[payload_len..payload_len+self.r#type as usize];
+        let encrypted_key = &backup[payload_len..payload_len+(*backup_type as usize*128)];
 
         if self.private_key.is_none() {
             error!("RSA key is not set");
@@ -569,8 +595,8 @@ impl OnlyKey {
     /// 
     /// The key must be the `p` and `q` factors concatenated as bytes.
     /// 
-    /// Example:
-    /// ```
+    /// For example:
+    /// ```ignore
     /// p = 01010101
     /// q = 02020202
     /// key = 0101010102020202
@@ -583,27 +609,16 @@ impl OnlyKey {
     pub fn set_backup_rsa_key(&mut self, key: Vec<u8>) -> Result<()> {
         trace!("Setting RSA backup key");
         let key_length = key.len();
+        
+        let rsa_key = RSAKeySlot::new_from_p_q(
+            &key[0..key_length/2],
+            &key[key_length/2..],
+            "", 
+            KeyFeature::DECRYPTION | KeyFeature::BACKUP,
+        )?;
 
-        let p = BigUint::from_bytes_be(&key[0..key_length/2]);
-        let q = BigUint::from_bytes_be(&key[key_length/2..]);
-        let e = BigUint::from(65537u32);
-        let n = p.clone()*q.clone();
-        let primes = vec![p.clone(), q.clone()];
-        let d = match e.clone().mod_inverse((p-1u32)*(q-1u32)).and_then(|d| d.to_biguint()) {
-            Some(d) => d,
-            None => {
-                error!("Could not find the modular inverse of e for provided p and q for key");
-                bail!(BackupError::ComputationError("Could not find the modular inverse of e for provided key".to_owned()));
-            },
-        };
-        let private_key = Some(RsaPrivateKey::from_components(n, e, d, primes));
-        let rsa_key = RSAKeySlot {
-            label: String::new(),
-            feature: KeyFeature::DECRYPTION | KeyFeature::BACKUP,
-            r#type: key.len() as u16,
-            private_key,
-        };
         self.backup_key = BackupKey::Rsa(Box::new(rsa_key));
+
         Ok(())
     }
 
@@ -888,15 +903,11 @@ impl OnlyKey {
                             debug!("Parsing RSA key {}", slot_nb);
                             slot_nb -= 1;
                             let r#type = decrypted[index];
-                            trace!("Pass");
                             index += 1;
 
                             if self.rsa_keys[slot_nb as usize].is_none() {
                                 self.rsa_keys[slot_nb as usize] = Some(RSAKeySlot::new());
                             }
-                            trace!("Pass");
-
-                            trace!("Pass1");
 
                             let mut rsa_key = self.rsa_keys[slot_nb as usize].as_mut().unwrap();
 
@@ -907,8 +918,6 @@ impl OnlyKey {
                                     bail!(BackupError::UnexpecteByte(r#type))
                                 },
                             };
-
-                            trace!("Pass2");
 
                             rsa_key.r#type = (r#type & 0x0F) as u16 * 1024;
 
