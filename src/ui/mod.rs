@@ -112,14 +112,11 @@ pub(crate) fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     else if matches!(app.current_panel, Panel::EnterECCKey(_)) {
         make_enter_ecc_popup(app, size, f);
     }
-    else if matches!(app.current_panel, Panel::EnterRsaKey(_)) {
+    else if matches!(app.current_panel, Panel::EnterRsaKey) {
         make_enter_rsa_popup(app, size, f);
     }
     else if matches!(app.current_panel, Panel::SelectDecrEccKeyType) {
         make_select_ecc_key_type_popup(app, size, f);
-    }
-    else if matches!(app.current_panel, Panel::SelectDecrRsaKeyType) {
-        make_select_rsa_key_type_popup(app, size, f);
     }
     else if matches!(app.current_panel, Panel::HelpPopup) {
         make_help_popup(size, f);
@@ -449,31 +446,6 @@ fn make_select_ecc_key_type_popup<B: Backend>(app: &mut App, size: Rect, f: &mut
         .highlight_style(Style::default().add_modifier(Modifier::BOLD | Modifier::REVERSED))
         .highlight_symbol(">>");
     f.render_stateful_widget(list, area, &mut app.decr_ecc_key_items.state);
-}
-
-fn make_select_rsa_key_type_popup<B: Backend>(app: &mut App, size: Rect, f: &mut Frame<B>) {
-    let block = Block::default().style(Style::default().add_modifier(Modifier::DIM));
-    f.render_widget(block, size);
-
-    let items: Vec<ListItem> = app
-        .decr_rsa_key_items
-        .items
-        .iter()
-        .map(|s| {
-            let lines = vec![Spans::from(*s)];
-            ListItem::new(lines).style(Style::default())
-        })
-        .collect();
-
-    let area = centered_rect(25, 2+items.len() as u16, size);
-    f.render_widget(Clear, area); //this clears out the background
-    
-    let list = List::new(items)
-        .block(Block::default().title("Select RSA key type").borders(Borders::ALL))
-        .style(Style::default().fg(Color::White))
-        .highlight_style(Style::default().add_modifier(Modifier::BOLD | Modifier::REVERSED))
-        .highlight_symbol(">>");
-    f.render_stateful_widget(list, area, &mut app.decr_rsa_key_items.state);
 }
 
 fn make_help_popup<B: Backend>(size: Rect, f: &mut Frame<B>) {
