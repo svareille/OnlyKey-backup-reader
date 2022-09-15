@@ -10,8 +10,12 @@ use crate::res;
 
 use onlykey::{OnlyKeyWidget, AccountDataWidget};
 
-use self::onlykey::{GeneralSelectionWidget, EccDataWidget, split_string_in_chunks};
+use self::onlykey::{GeneralSelectionWidget, EccDataWidget, split_string_in_chunks, RsaDataWidget};
 use crate::SelectedGeneral;
+
+pub fn key_style(text: &str) -> Span {
+    Span::styled(text, Style::default().add_modifier(Modifier::BOLD | Modifier::UNDERLINED))
+}
 
 pub(crate) fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     let size = f.size();
@@ -308,7 +312,25 @@ fn make_onlykey_general_view<B: Backend>(app: &App, chunk: Rect, f: &mut Frame<B
             };
         },
         SelectedGeneral::Rsa(i) => {
-            
+            if let Some(ok) = &app.onlykey {
+                match ok.get_rsa_key(i.into()) {
+                    Ok(key) => {
+                        let data_widget = RsaDataWidget::new(key.cloned(), app.show_secrets)
+                            .block(
+                                Block::default()
+                                    .title(format!("RSA key {}", i))
+                                    .borders(Borders::ALL)
+                                    .style(Style::default().fg(Color::White))
+                                    .border_type(if matches!(app.current_panel, Panel::DataDisplay) {BorderType::Double} else {BorderType::Plain})
+                                    .border_style(Style::default().fg(if matches!(app.current_panel, Panel::DataDisplay) {Color::Cyan} else {Color::White}))
+                            );
+                        f.render_widget(data_widget, hchunks[1]);
+                    }
+                    Err(e) => {
+                        error!("Error while getting RSA key {}: {}", 1, e);
+                    }
+                }
+            };
         }
     }
 

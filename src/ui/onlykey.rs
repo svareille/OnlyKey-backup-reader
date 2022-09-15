@@ -1,9 +1,11 @@
 use chrono::{DateTime, Utc, Timelike};
 use data_encoding::HEXUPPER;
-use okbr::{AccountSlot, OTP, ECCKeySlot, KeyFeature};
-use tui::{widgets::{Block, Widget, Table, Cell, Row, Gauge, Paragraph, Borders}, style::{Style, Color, Modifier}, layout::{Rect, Constraint, Alignment}};
+use okbr::{AccountSlot, OTP, ECCKeySlot, KeyFeature, RSAKeySlot};
+use tui::{widgets::{Block, Widget, Table, Cell, Row, Gauge, Paragraph, Borders}, style::{Style, Color, Modifier}, layout::{Rect, Constraint, Alignment}, text::{Spans, Span}};
 
 use crate::SelectedGeneral;
+
+use super::key_style;
 
 
 pub(crate) struct OnlyKeyWidgetBase<'a> {
@@ -522,7 +524,7 @@ impl<'a> Widget for GeneralSelectionWidget<'a> {
 pub struct EccDataWidget<'a> {
     /// A block to wrap the widget in
     block: Option<Block<'a>>,
-    keys: Option<ECCKeySlot>,
+    key: Option<ECCKeySlot>,
     show_secrets: bool,
 }
 
@@ -531,7 +533,7 @@ impl<'a> EccDataWidget<'a> {
     {
         EccDataWidget {
             block: None,
-            keys: key,
+            key,
             show_secrets,
         }
     }
@@ -566,7 +568,7 @@ impl<'a> Widget for EccDataWidget<'a> {
             let mut height: u16 = 1;
             let row = Row::new(vec![
                 Cell::from("Private Key:").style(field_name_style),
-                Cell::from(match &self.keys {
+                Cell::from(match &self.key {
                     Some(key) => {
                         if self.show_secrets {
                             let res = split_string_in_chunks(&HEXUPPER.encode(&key.private_key.to_bytes()), max_value_width.into());
@@ -585,7 +587,7 @@ impl<'a> Widget for EccDataWidget<'a> {
         let mut key_type = "";
         let mut key_usage = String::new();
 
-        match self.keys {
+        match self.key {
             Some(key) => {
                 key_label = key.label;
                 key_type = match key.r#type {
@@ -609,6 +611,108 @@ impl<'a> Widget for EccDataWidget<'a> {
             private_key_row,
             Row::new(vec![Cell::from("Types:").style(field_name_style), Cell::from(key_type)]),
             Row::new(vec![Cell::from("Usage:").style(field_name_style), Cell::from(key_usage)]),
+            ])
+            .style(Style::default())
+            .header(
+                Row::new(vec!["Field", "Value"])
+                    .style(Style::default().fg(Color::Blue).add_modifier(Modifier::ITALIC))
+            )
+            .widths(&constraints)
+            //.block(Block::default().borders(Borders::ALL))
+            .column_spacing(1);
+        table.render(text_area, buf);
+    }
+}
+
+pub struct RsaDataWidget<'a> {
+    /// A block to wrap the widget in
+    block: Option<Block<'a>>,
+    key: Option<RSAKeySlot>,
+    _show_secrets: bool,
+}
+
+impl<'a> RsaDataWidget<'a> {
+    pub fn new(key: Option<RSAKeySlot>, show_secrets: bool) -> RsaDataWidget<'a>
+    {
+        RsaDataWidget {
+            block: None,
+            key,
+            _show_secrets: show_secrets,
+        }
+    }
+
+    pub fn block(mut self, block: Block<'a>) -> RsaDataWidget<'a> {
+        self.block = Some(block);
+        self
+    }
+}
+
+impl<'a> Widget for RsaDataWidget<'a> {
+    fn render(mut self, area: tui::layout::Rect, buf: &mut tui::buffer::Buffer) {
+        let text_area = match self.block.take() {
+            Some(b) => {
+                let inner_area = b.inner(area);
+                b.render(area, buf);
+                inner_area
+            }
+            None => area,
+        };
+
+        if text_area.width < 26 {
+            buf.set_string(text_area.left(), text_area.top(), "Not enough space. Please widen the terminal.", Style::default());
+            return
+        }
+
+        let field_name_style = Style::default().fg(Color::Yellow);
+        let max_value_width = text_area.width-13;
+        let constraints = [Constraint::Length(12), Constraint::Length(max_value_width)];
+
+        let private_key_row = {
+            let height: u16 = 1;
+            let row = Row::new(vec![
+                Cell::from("Private Key:").style(field_name_style),
+                match &self.key {
+                    Some(_) => {
+                        Cell::from(Spans::from(vec![
+                            Span::raw("Present. Press "), key_style("k"), Span::raw(" to copy the `p` and `q` factors as an hex string, or "), key_style("K"), Span::raw(" to copy the private key in PKCS#8 PEM format"),
+                        ]))
+                    }
+                    None => {
+                        Cell::from("")
+                    }
+                },
+                ]
+            );
+            row.height(height)
+        };
+
+        let mut key_label = String::new();
+        let mut key_type = String::new();
+        let mut key_usage = String::new();
+
+        match self.key {
+            Some(key) => {
+                key_label = key.label;
+                key_type = match key.r#type {
+                    1024 | 2048 | 3072 | 4096 => key.r#type.to_string(),
+                    _ => String::new(),
+                };
+                key_usage = {
+                    let mut usage = vec![];
+                    if key.feature.contains(KeyFeature::DECRYPTION) {usage.push("Decryption");}
+                    if key.feature.contains(KeyFeature::SIGNATURE) {usage.push("Signature");}
+                    if key.feature.contains(KeyFeature::BACKUP) {usage.push("Backup");}
+                    usage.join(" & ")
+                };
+            }
+            None => {},
+        }
+
+        let table = Table::new(vec![
+            Row::new(vec![Cell::from("Label:").style(field_name_style), Cell::from(key_label)]),
+            Row::new(vec![Cell::from("Types:").style(field_name_style), Cell::from(key_type)]),
+            Row::new(vec![Cell::from("Usage:").style(field_name_style), Cell::from(key_usage)]),
+            private_key_row,
             ])
             .style(Style::default())
             .header(
