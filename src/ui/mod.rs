@@ -237,7 +237,25 @@ fn make_onlykey_general_view<B: Backend>(app: &App, chunk: Rect, f: &mut Frame<B
         [S; 16]
     };
 
+    let mut rsa_labels=
+    {
+        const S: String = String::new();
+        [S; 4]
+    };
+
     if let Some(ok) = &app.onlykey {
+        for i in 1..=4 {
+            rsa_labels[i-1] = match ok.get_rsa_key(i) {
+                Ok(key) => match key {
+                    Some(key) => key.label.to_string(),
+                    None => String::new(),
+                },
+                Err(e) => {
+                    error!("Error while getting RSA key {}: {}", i, e);
+                    return;
+                }
+            };
+        }
         for i in 1..=16 {
             ecc_labels[i-1] = match ok.get_ecc_key(i) {
                 Ok(key) => {
@@ -254,7 +272,7 @@ fn make_onlykey_general_view<B: Backend>(app: &App, chunk: Rect, f: &mut Frame<B
         }
     }
 
-    let general_widget = GeneralSelectionWidget::new(ecc_labels)
+    let general_widget = GeneralSelectionWidget::new(rsa_labels, ecc_labels)
         .block(
             Block::default()
                 .title("General")
@@ -289,6 +307,9 @@ fn make_onlykey_general_view<B: Backend>(app: &App, chunk: Rect, f: &mut Frame<B
                 }
             };
         },
+        SelectedGeneral::Rsa(i) => {
+            
+        }
     }
 
 }

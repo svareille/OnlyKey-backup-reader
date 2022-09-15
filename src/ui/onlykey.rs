@@ -417,6 +417,8 @@ pub(crate) struct GeneralSelectionWidget<'a> {
     /// A block to wrap the widget in
     block: Option<Block<'a>>,
 
+    /// Labels of the RSA slots
+    rsa_labels: [String; 4],
     /// Labels of the ECC slots
     ecc_labels: [String; 16],
     /// Item selected
@@ -424,10 +426,11 @@ pub(crate) struct GeneralSelectionWidget<'a> {
 }
 
 impl<'a> GeneralSelectionWidget<'a> {
-    pub fn new(ecc_labels: [String; 16]) -> GeneralSelectionWidget<'a>
+    pub fn new(rsa_labels: [String; 4], ecc_labels: [String; 16]) -> GeneralSelectionWidget<'a>
     {
         GeneralSelectionWidget {
             block: None,
+            rsa_labels,
             ecc_labels,
             selected: SelectedGeneral::None,
         }
@@ -447,7 +450,7 @@ impl<'a> GeneralSelectionWidget<'a> {
 
 impl<'a> Widget for GeneralSelectionWidget<'a> {
     fn render(mut self, area: tui::layout::Rect, buf: &mut tui::buffer::Buffer) {
-        let text_area = match self.block.take() {
+        let mut text_area = match self.block.take() {
             Some(b) => {
                 let inner_area = b.inner(area);
                 b.render(area, buf);
@@ -461,7 +464,7 @@ impl<'a> Widget for GeneralSelectionWidget<'a> {
             return;
         }
 
-        let ecc_label_width = text_area.width/4;
+        let key_label_width = text_area.width/4;
 
         /*let mut y = 0;
         let mut x = 0;
@@ -485,6 +488,20 @@ impl<'a> Widget for GeneralSelectionWidget<'a> {
             }
         }*/
 
+        for x in 0..4 {
+            let rsa_label = Paragraph::new(self.rsa_labels[x as usize].clone())
+                .block(Block::default()
+                    .title(format!("RSA {}", x+1))
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(if self.selected == SelectedGeneral::Rsa(x+1){Color::LightRed} else {Color::White}))
+                )
+                .style(Style::default())
+                .alignment(Alignment::Left);
+            rsa_label.render(Rect { x: text_area.x+x*key_label_width, y: text_area.y, width: key_label_width, height: 3 }, buf);
+        }
+
+        text_area.y += 3;
+
         for y in 0..4 {
             for x in 0..4 {
                 let slot_nb = x + y*4 + 1;
@@ -496,7 +513,7 @@ impl<'a> Widget for GeneralSelectionWidget<'a> {
                     )
                     .style(Style::default())
                     .alignment(Alignment::Left);
-                ecc_label.render(Rect { x: text_area.x+x*ecc_label_width, y: text_area.y+y*3, width: ecc_label_width, height: 3 }, buf);
+                ecc_label.render(Rect { x: text_area.x+x*key_label_width, y: text_area.y+y*3, width: key_label_width, height: 3 }, buf);
             }
         }
     }
@@ -505,7 +522,7 @@ impl<'a> Widget for GeneralSelectionWidget<'a> {
 pub struct EccDataWidget<'a> {
     /// A block to wrap the widget in
     block: Option<Block<'a>>,
-    key: Option<ECCKeySlot>,
+    keys: Option<ECCKeySlot>,
     show_secrets: bool,
 }
 
@@ -514,7 +531,7 @@ impl<'a> EccDataWidget<'a> {
     {
         EccDataWidget {
             block: None,
-            key,
+            keys: key,
             show_secrets,
         }
     }
@@ -549,7 +566,7 @@ impl<'a> Widget for EccDataWidget<'a> {
             let mut height: u16 = 1;
             let row = Row::new(vec![
                 Cell::from("Private Key:").style(field_name_style),
-                Cell::from(match &self.key {
+                Cell::from(match &self.keys {
                     Some(key) => {
                         if self.show_secrets {
                             let res = split_string_in_chunks(&HEXUPPER.encode(&key.private_key.to_bytes()), max_value_width.into());
@@ -568,7 +585,7 @@ impl<'a> Widget for EccDataWidget<'a> {
         let mut key_type = "";
         let mut key_usage = String::new();
 
-        match self.key {
+        match self.keys {
             Some(key) => {
                 key_label = key.label;
                 key_type = match key.r#type {

@@ -86,6 +86,7 @@ impl Input {
 pub enum SelectedGeneral {
     None,
     Ecc(u16),
+    Rsa(u16),
 }
 
 struct App<'a> {
@@ -155,7 +156,7 @@ impl<'a> App<'a> {
 
             current_profile: 0,
             current_account: 0,
-            current_general: SelectedGeneral::Ecc(1),
+            current_general: SelectedGeneral::Rsa(1),
 
             show_secrets: false,
 
@@ -540,6 +541,8 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                                 
                                                 SelectedGeneral::Ecc(if i == base+3 {base} else {i+1})
                                             },
+                                            SelectedGeneral::Rsa(i) => 
+                                                SelectedGeneral::Rsa(i%4+1),
                                         };
                                     }
                                     KeyCode::Left => {
@@ -550,6 +553,8 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                                 let base = ((i-1) / 4)*4 + 1;
                                                 SelectedGeneral::Ecc(if i == base {i+3} else {i-1})
                                             },
+                                            SelectedGeneral::Rsa(i) =>
+                                                SelectedGeneral::Rsa(if i == 1 {4} else {i-1})
                                         };
                                     }
                                     KeyCode::Down => {
@@ -558,8 +563,14 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                             SelectedGeneral::Ecc(i) => {
                                                 // Move in one row : 1 <-> 2 <-> 3 <-> 4 <-> 1
                                                 let base = ((i-1) / 4)*4 + 1;
-                                                SelectedGeneral::Ecc(if base == 13 {(i-1)%4+1} else {base + 4 + (i-1)%4})
+                                                if base == 13 {
+                                                    SelectedGeneral::Rsa((i-1)%4+1)
+                                                } else {
+                                                    SelectedGeneral::Ecc(base + 4 + (i-1)%4)
+                                                }
                                             },
+                                            SelectedGeneral::Rsa(i) =>
+                                                SelectedGeneral::Ecc(i)
                                         };
                                     }
                                     KeyCode::Up => {
@@ -568,8 +579,14 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                             SelectedGeneral::Ecc(i) => {
                                                 // Move in one row : 1 <-> 2 <-> 3 <-> 4 <-> 1
                                                 let base = ((i-1) / 4)*4 + 1;
-                                                SelectedGeneral::Ecc(if base == 1 {13 + (i-1)%4} else {base - 4 + (i-1)%4})
+                                                if base == 1 {
+                                                    SelectedGeneral::Rsa(i)
+                                                } else {
+                                                    SelectedGeneral::Ecc(base - 4 + (i-1)%4)
+                                                }
                                             },
+                                            SelectedGeneral::Rsa(i) =>
+                                                SelectedGeneral::Ecc(13 + (i-1)%4)
                                         };
                                     }
                                     _ => {}
@@ -720,6 +737,9 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                                 }
                                             }
                                         },
+                                        SelectedGeneral::Rsa(i) => {
+
+                                        }
                                     }
                                 }
                                 _ => {}
