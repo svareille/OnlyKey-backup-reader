@@ -1,4 +1,5 @@
-use okbr::{verify_backup, OnlyKey, ECCKeySlot, CharAfter, OTP, KeyFeature, ECCKeyType};
+use data_encoding::HEXLOWER;
+use okbr::{verify_backup, OnlyKey, ECCKeySlot, CharAfter, OTP, KeyFeature, ECCKeyType, RSAKeySlot};
 
 mod common;
 
@@ -107,6 +108,40 @@ fn construct_expected_onlykey_ecc() -> OnlyKey {
     onlykey
 }
 
+fn construct_expected_onlykey_rsa() -> OnlyKey {
+    let mut onlykey = construct_expected_onlykey_ecc();
+
+    let mut ecc_key_1 = onlykey.get_ecc_key(1).unwrap().unwrap().clone();
+    ecc_key_1.feature = KeyFeature::DECRYPTION;
+    ecc_key_1.r#type = ECCKeyType::SECP256K1;
+
+    onlykey.set_ecc_key_slot(1, ecc_key_1).unwrap();
+
+    let key = HEXLOWER.decode(common::RSA_ENCRYPTION_KEY).unwrap();
+
+    let encryption_key = RSAKeySlot::new_from_p_q(
+        &key[..key.len()/2], 
+        &key[key.len()/2..], 
+        "", 
+        KeyFeature::DECRYPTION | KeyFeature::BACKUP,
+    ).unwrap();
+    onlykey.set_rsa_key_slot(1, encryption_key).unwrap();
+
+    let key = HEXLOWER.decode(common::RSA_SIGNATURE_KEY).unwrap();
+
+    let signature_key = RSAKeySlot::new_from_p_q(
+        &key[..key.len()/2], 
+        &key[key.len()/2..], 
+        "", 
+        KeyFeature::SIGNATURE,
+    ).unwrap();
+    onlykey.set_rsa_key_slot(2, signature_key).unwrap();
+
+    onlykey.set_backup_rsa_key(HEXLOWER.decode(common::RSA_ENCRYPTION_KEY).unwrap()).unwrap();
+
+    onlykey
+}
+
 fn install_test_logger() {
     // This'll fail if called twice; don't worry.
     let _ = fern::Dispatch::new()
@@ -142,9 +177,18 @@ fn load_good_backup_with_ecc() {
     let expected_onlykey = construct_expected_onlykey_ecc(); 
     onlykey.set_backup_ecc_key(vec![0x01; 32], ECCKeyType::X25519).expect("Problem setting backup ECC key");
     onlykey.load_backup(common::BACKUP_ECC_STR).unwrap();
+    
+    assert_eq!(onlykey, expected_onlykey);
+}
 
-    println!("Expected: {:#?}", expected_onlykey);
-    println!("Got: {:#?}", onlykey);
+#[test]
+fn load_good_backup_with_rsa() {
+    install_test_logger();
+    let mut onlykey: OnlyKey = OnlyKey::new();
+    let expected_onlykey = construct_expected_onlykey_rsa(); 
+    onlykey.set_backup_rsa_key(HEXLOWER.decode(common::RSA_ENCRYPTION_KEY).unwrap()).unwrap();
+    
+    onlykey.load_backup(common::BACKUP_RSA_STR).unwrap();
     
     assert_eq!(onlykey, expected_onlykey);
 }
