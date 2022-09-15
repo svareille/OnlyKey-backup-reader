@@ -27,7 +27,7 @@ Backups for the OnlyKey Duo should work too, but not tested.
   - [x] With X25519 key
   - [x] With NIST256P1 key
   - [x] With SECP256K1 key
-- [ ] Read RSA-protected backup  
+- [x] Read RSA-protected backup  
 
 ### Data displayed
 
@@ -50,7 +50,7 @@ For other data:
   - [x] NIST256P1
   - [x] SECP256K1
 - [ ] HMACSHA1
-- [ ] RSA private keys
+- [X] RSA private keys
 - [ ] FIDO keys
 - [ ] FIDO2 keys
 - [ ] Yubikey Security info (Legacy)
@@ -58,7 +58,7 @@ For other data:
 ## Usage
 ```
 $ okbr.exe --help
-okbr 0.1.0
+okbr 0.2.0
 Simon Vareille
 A cross-platform OnlyKey backup reader
 
@@ -95,6 +95,11 @@ When a *profile* panel is on screen:
   
 When an ECC key is selected on the *general* panel:
 - Press *k* to copy the private key into the clipboard.
+
+When an RSA key is selected on the *general* panel:
+- Press *k* to copy the private key into the clipboard as the concatenation of hexadecimal `p` and
+  `q` parameters.
+- Press *K* to copy the private key into the clipboard as a PKCS#8 PEM.
 
 ## Security considerations
 
