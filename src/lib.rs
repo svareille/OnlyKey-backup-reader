@@ -909,36 +909,22 @@ impl OnlyKey {
                                 self.rsa_keys[slot_nb as usize] = Some(RSAKeySlot::new());
                             }
 
-                            let mut rsa_key = self.rsa_keys[slot_nb as usize].as_mut().unwrap();
-
-                            rsa_key.feature = match KeyFeature::from_bits(r#type & 0xF0) {
-                                Some(feature) => feature,
-                                None => {
-                                    error!("Unknown RSA key feature 0x{:02x}", r#type & 0xF0);
-                                    bail!(BackupError::UnexpecteByte(r#type))
-                                },
-                            };
-
-                            rsa_key.r#type = (r#type & 0x0F) as u16 * 1024;
+                            let rsa_key = self.rsa_keys[slot_nb as usize].as_ref().unwrap().clone();
 
                             let key_length = (r#type & 0x0F) as usize * 128;
 
-                            trace!("Computing p, q, e and n");
-
-                            let p = BigUint::from_bytes_be(&decrypted[index..index+key_length/2]);
-                            let q = BigUint::from_bytes_be(&decrypted[index+key_length/2..index+key_length]);
-                            let e = BigUint::from(65537u32);
-                            let n = p.clone()*q.clone();
-                            let primes = vec![p.clone(), q.clone()];
-                            trace!("Computing d");
-                            let d = match e.clone().mod_inverse((p-1u32)*(q-1u32)).and_then(|d| d.to_biguint()) {
-                                Some(d) => d,
-                                None => {
-                                    error!("Could not find the modular inverse of e for provided p and q for key in slot {}", slot_nb);
-                                    bail!(BackupError::ComputationError("Could not find the modular inverse of e for provided key".to_owned()));
+                            self.rsa_keys[slot_nb as usize] = Some(RSAKeySlot::new_from_p_q(
+                                &decrypted[index..index+key_length/2],
+                                &decrypted[index+key_length/2..index+key_length],
+                                &rsa_key.label, 
+                                match KeyFeature::from_bits(r#type & 0xF0) {
+                                    Some(feature) => feature,
+                                    None => {
+                                        error!("Unknown RSA key feature 0x{:02x}", r#type & 0xF0);
+                                        bail!(BackupError::UnexpecteByte(r#type))
+                                    },
                                 },
-                            };
-                            rsa_key.private_key = Some(RsaPrivateKey::from_components(n, e, d, primes));
+                            )?);
                             trace!("RSA key created");
                             index += key_length;
                         }
