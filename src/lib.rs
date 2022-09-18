@@ -622,6 +622,29 @@ impl OnlyKey {
         Ok(())
     }
 
+    /// Decode a base64-encoded backup
+    /// 
+    /// # Errors
+    /// 
+    /// Returns [`DecodeError`](data_encoding::DecodeError) if the decoding failed.
+    /// 
+    pub fn decode_backup(&self, backup: &str) -> Result<Vec<u8>> {
+        let mut decoded= Vec::<u8>::new();
+        // Read backup, decoding the base64 content
+        info!("Decoding backup");
+        for mut line in backup.lines() {
+            line = line.trim();
+            if line.starts_with("--") {
+                continue;
+            }
+            else
+            {
+                decoded.append(&mut BASE64.decode(line.as_bytes())?);
+            }
+        }
+        Ok(decoded)
+    }
+
     /// Loads the provided base64-encoded backup.
     /// 
     /// # Errors
@@ -634,20 +657,8 @@ impl OnlyKey {
     /// - [`UnexpecteByte`](BackupError::UnexpecteByte) if a byte was not expected.
     /// 
     pub fn load_backup(&mut self, backup: &str) -> Result<()> {
-        let mut encrypted= Vec::<u8>::new();
 
-        // Read backup, decoding the base64 content
-        info!("Decoding backup");
-        for mut line in backup.lines() {
-            line = line.trim();
-            if line.starts_with("--") {
-                continue;
-            }
-            else
-            {
-                encrypted.append(&mut BASE64.decode(line.as_bytes())?);
-            }
-        }
+        let encrypted = self.decode_backup(backup)?;
 
         info!("Decrypting backup");
         let backup_key = self.backup_key().ok_or_else(|| anyhow!(BackupError::NoKeySet))?;
