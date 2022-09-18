@@ -35,6 +35,10 @@ struct Cli {
     #[clap(flatten)]
     verbose: clap_verbosity_flag::Verbosity,
 
+    #[clap(short, long, value_parser, value_name = "FILE")]
+    /// If present, store the decrypted raw backup in the specified file
+    raw_output: Option<PathBuf>,
+
     /*#[clap(short, long, arg_enum, value_parser)]
     /// Set the decryption key type to decrypt the loaded backup
     decryption_key_type: Option<DecrKeyType>,*/
@@ -93,6 +97,8 @@ pub enum SelectedGeneral {
 struct App<'a> {
     /// Path of the backup
     pub backup_path: PathBuf,
+    /// Path of the destination file where to store the raw output
+    pub raw_path: Option<PathBuf>,
     /// Onlykey object representing the backup
     pub onlykey: Option<OnlyKey>,
     /// Decryption key types
@@ -135,6 +141,7 @@ impl<'a> App<'a> {
     fn new() -> App<'a> {
         App {
             backup_path: PathBuf::default(),
+            raw_path: None,
             onlykey: None,
             decr_key_items: StatefulList::with_items(vec![
                 "RSA",
@@ -254,6 +261,7 @@ fn main() -> Result<()> {
     let mut app = App::new();
     app.backup_path = cli.backup;
     app.current_panel = Panel::SelectDecrKeyType;
+    app.raw_path = cli.raw_output;
 
     // setup terminal
     enable_raw_mode()?;
@@ -782,23 +790,42 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                     match fs::read_to_string(&app.backup_path) {
                                         Ok(backup) => {
                                             debug!("Backup has been read");
-                                            match ok.load_backup(&backup) {
-                                                Ok(()) => {
-                                                    info!("Backup decoded");
-                                                    app.onlykey = Some(ok);
-                                                    app.panel_history.pop();
-                                                    app.current_panel = Panel::ProfileTab;
-                                                    app.input_mode = InputMode::Normal;
+                                            match &app.raw_path {
+                                                Some(path) => {                                                    
+                                                    match ok.decode_backup(&backup) {
+                                                        Ok(decoded) => {
+                                                            let backup_key = ok.backup_key().unwrap();
+                                                            match backup_key.decrypt_backup(decoded) {
+                                                                Ok(raw) => {
+                                                                    fs::write(path, raw)?;
+                                                                    return Ok(());
+                                                                },
+                                                                Err(_) => app.set_error("Failed to decrypt backup. Retry with another passphrase. If the decryption keep failing, the backup may be unusable."),
+                                                            }
+                                                        },
+                                                        Err(e) => bail!("Could not decode backup: {}", e),
+                                                    }
                                                 }
-                                                Err(error) => {
-                                                    error!("Failed to load backup: {}", error);
-                                                    match error.downcast_ref::<BackupError>() {
-                                                        Some(BackupError::KeyTypeNoMatch) | Some(BackupError::UnexpecteByte(_))  | Some(BackupError::UnexpectedSlotNumber(_))=> {
-                                                            app.set_error("Failed to load backup. Retry with another passphrase. If the loading keep failing, the backup may be unusable.");
-                                                        },
-                                                        Some(_) | None => {
-                                                            bail!("Could not load backup: {}", error);
-                                                        },
+                                                None => {
+                                                    match ok.load_backup(&backup) {
+                                                        Ok(()) => {
+                                                            info!("Backup decoded");
+                                                            app.onlykey = Some(ok);
+                                                            app.panel_history.pop();
+                                                            app.current_panel = Panel::ProfileTab;
+                                                            app.input_mode = InputMode::Normal;
+                                                        }
+                                                        Err(error) => {
+                                                            error!("Failed to load backup: {}", error);
+                                                            match error.downcast_ref::<BackupError>() {
+                                                                Some(BackupError::KeyTypeNoMatch) | Some(BackupError::UnexpecteByte(_))  | Some(BackupError::UnexpectedSlotNumber(_))=> {
+                                                                    app.set_error("Failed to load backup. Retry with another passphrase. If the loading keep failing, the backup may be unusable.");
+                                                                },
+                                                                Some(_) | None => {
+                                                                    bail!("Could not load backup: {}", error);
+                                                                },
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             }
@@ -827,26 +854,45 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                                 info!("ECC key parsed");
                                                 match fs::read_to_string(&app.backup_path) {
                                                     Ok(backup) => {
-                                                        match ok.load_backup(&backup) {
-                                                            Ok(()) => {
-                                                                info!("Backup decoded");
-                                                                app.onlykey = Some(ok);
-                                                                app.panel_history.pop();
-                                                                app.current_panel = Panel::ProfileTab;
-                                                                app.input_mode = InputMode::Normal;
+                                                        match &app.raw_path {
+                                                            Some(path) => {                                                    
+                                                                match ok.decode_backup(&backup) {
+                                                                    Ok(decoded) => {
+                                                                        let backup_key = ok.backup_key().unwrap();
+                                                                        match backup_key.decrypt_backup(decoded) {
+                                                                            Ok(raw) => {
+                                                                                fs::write(path, raw)?;
+                                                                                return Ok(());
+                                                                            },
+                                                                            Err(_) => app.set_error("Failed to decrypt backup. Retry with another ECC key. If the decryption keep failing, the backup may be unusable."),
+                                                                        }
+                                                                    },
+                                                                    Err(e) => bail!("Could not decode backup: {}", e),
+                                                                }
                                                             }
-                                                            Err(e) => {
-                                                                error!("Failed to load backup: {}", e);
-                                                                match e.downcast_ref::<BackupError>() {
-                                                                    Some(BackupError::KeyTypeNoMatch) => {
-                                                                        app.set_error("Failed to load backup: The ECC key type provided does not match the one used for encryption.");
+                                                            None => {
+                                                                match ok.load_backup(&backup) {
+                                                                    Ok(()) => {
+                                                                        info!("Backup decoded");
+                                                                        app.onlykey = Some(ok);
+                                                                        app.panel_history.pop();
+                                                                        app.current_panel = Panel::ProfileTab;
+                                                                        app.input_mode = InputMode::Normal;
                                                                     }
-                                                                    Some(BackupError::UnexpecteByte(_))  | Some(BackupError::UnexpectedSlotNumber(_))=> {
-                                                                        app.set_error("Failed to load backup. Retry with another ECC key. If the loading keep failing, the backup may be unusable.");
-                                                                    },
-                                                                    Some(_) | None => {
-                                                                        bail!("Could not load backup: {}", e);
-                                                                    },
+                                                                    Err(e) => {
+                                                                        error!("Failed to load backup: {}", e);
+                                                                        match e.downcast_ref::<BackupError>() {
+                                                                            Some(BackupError::KeyTypeNoMatch) => {
+                                                                                app.set_error("Failed to load backup: The ECC key type provided does not match the one used for encryption.");
+                                                                            }
+                                                                            Some(BackupError::UnexpecteByte(_))  | Some(BackupError::UnexpectedSlotNumber(_))=> {
+                                                                                app.set_error("Failed to load backup. Retry with another ECC key. If the loading keep failing, the backup may be unusable.");
+                                                                            },
+                                                                            Some(_) | None => {
+                                                                                bail!("Could not load backup: {}", e);
+                                                                            },
+                                                                        }
+                                                                    }
                                                                 }
                                                             }
                                                         }
@@ -879,26 +925,45 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                             info!("RSA key parsed");
                                             match fs::read_to_string(&app.backup_path) {
                                                 Ok(backup) => {
-                                                    match ok.load_backup(&backup) {
-                                                        Ok(()) => {
-                                                            info!("Backup decoded");
-                                                            app.onlykey = Some(ok);
-                                                            app.panel_history.pop();
-                                                            app.current_panel = Panel::ProfileTab;
-                                                            app.input_mode = InputMode::Normal;
+                                                    match &app.raw_path {
+                                                        Some(path) => {                                                    
+                                                            match ok.decode_backup(&backup) {
+                                                                Ok(decoded) => {
+                                                                    let backup_key = ok.backup_key().unwrap();
+                                                                    match backup_key.decrypt_backup(decoded) {
+                                                                        Ok(raw) => {
+                                                                            fs::write(path, raw)?;
+                                                                            return Ok(());
+                                                                        },
+                                                                        Err(_) => app.set_error("Failed to decrypt backup. Retry with another ECC key. If the decryption keep failing, the backup may be unusable."),
+                                                                    }
+                                                                },
+                                                                Err(e) => bail!("Could not decode backup: {}", e),
+                                                            }
                                                         }
-                                                        Err(e) => {
-                                                            error!("Failed to load backup: {}", e);
-                                                            match e.downcast_ref::<BackupError>() {
-                                                                Some(BackupError::KeyTypeNoMatch) => {
-                                                                    app.set_error("Failed to load backup: The RSA key type provided does not match the one used for encryption.");
+                                                        None => {
+                                                            match ok.load_backup(&backup) {
+                                                                Ok(()) => {
+                                                                    info!("Backup decoded");
+                                                                    app.onlykey = Some(ok);
+                                                                    app.panel_history.pop();
+                                                                    app.current_panel = Panel::ProfileTab;
+                                                                    app.input_mode = InputMode::Normal;
                                                                 }
-                                                                Some(BackupError::UnexpecteByte(_))  | Some(BackupError::UnexpectedSlotNumber(_))=> {
-                                                                    app.set_error("Failed to load backup. Retry with another RSA key. If the loading keep failing, the backup may be unusable.");
-                                                                },
-                                                                Some(_) | None => {
-                                                                    bail!("Could not load backup: {}", e);
-                                                                },
+                                                                Err(e) => {
+                                                                    error!("Failed to load backup: {}", e);
+                                                                    match e.downcast_ref::<BackupError>() {
+                                                                        Some(BackupError::KeyTypeNoMatch) => {
+                                                                            app.set_error("Failed to load backup: The RSA key type provided does not match the one used for encryption.");
+                                                                        }
+                                                                        Some(BackupError::UnexpecteByte(_))  | Some(BackupError::UnexpectedSlotNumber(_))=> {
+                                                                            app.set_error("Failed to load backup. Retry with another RSA key. If the loading keep failing, the backup may be unusable.");
+                                                                        },
+                                                                        Some(_) | None => {
+                                                                            bail!("Could not load backup: {}", e);
+                                                                        },
+                                                                    }
+                                                                }
                                                             }
                                                         }
                                                     }
