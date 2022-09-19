@@ -580,7 +580,7 @@ impl<'a> Widget for EccDataWidget<'a> {
                 Cell::from(match &self.key {
                     Some(key) => {
                         if self.show_secrets {
-                            let res = split_string_in_chunks(&HEXUPPER.encode(&key.private_key.to_bytes()), max_value_width.into());
+                            let res = split_string_in_chunks(&HEXUPPER.encode(key.private_key.as_bytes()), max_value_width.into());
                             height = res.1 as u16;
                             res.0
                         } else {"****".to_owned()}
