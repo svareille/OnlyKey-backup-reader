@@ -6,7 +6,7 @@ use data_encoding::{BASE32, BASE64};
 use log::{debug, info, error, trace, warn};
 use sha2::{Sha256, Digest};
 use aes_gcm::aead::{Aead, NewAead};
-use ed25519_dalek::{SecretKey, PublicKey};
+use ed25519_dalek::{PublicKey};
 use x25519_dalek::x25519;
 use salsa20::hsalsa20;
 use generic_array::GenericArray;
@@ -255,8 +255,31 @@ pub enum ECCKeyType {
     SECP256K1 = 3,
 }
 
-//#[derive(Clone)]
 #[derive(Debug)]
+pub struct SecretKey(pub ed25519_dalek::SecretKey);
+
+impl SecretKey {
+    pub fn from_bytes(bytes: &[u8]) -> Result<SecretKey> {
+        Ok(SecretKey(ed25519_dalek::SecretKey::from_bytes(bytes)?))
+    }
+
+    pub fn as_bytes(&self) -> &[u8; ed25519_dalek::SECRET_KEY_LENGTH] {
+        self.0.as_bytes()
+    }
+
+    pub fn to_bytes(&self) -> [u8; ed25519_dalek::SECRET_KEY_LENGTH] {
+        self.0.to_bytes()
+    }
+}
+
+impl PartialEq for SecretKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.to_bytes() == other.0.to_bytes()
+    }
+}
+
+//#[derive(Clone)]
+#[derive(Debug, PartialEq)]
 pub struct ECCKeySlot {
     pub label: String,
     pub feature: KeyFeature,
@@ -328,15 +351,64 @@ impl KeySlot for ECCKeySlot {
     }
 
     fn public_key(&self) -> Vec<u8> {
-        let public_key: PublicKey = (&self.private_key).into();
+        let public_key: PublicKey = (&self.private_key.0).into();
         return public_key.as_bytes().to_vec();
     }
 }
 
-impl PartialEq for ECCKeySlot {
+/*impl PartialEq for ECCKeySlot {
     fn eq(&self, other: &Self) -> bool {
         let private_key_same = self.private_key.as_bytes() == other.private_key.as_bytes();
         self.label == other.label && self.feature == other.feature && self.r#type == other.r#type && private_key_same
+    }
+}*/
+
+#[derive(PartialEq, Debug)]
+pub struct DeriveKey {
+    private: SecretKey,
+}
+
+impl DeriveKey {
+    pub fn new() -> Self {
+        DeriveKey { private: SecretKey::from_bytes(&[0; 32]).unwrap() }
+    }
+
+    pub fn from_bytes(bytes: &[u8; 32]) -> Self {
+        DeriveKey { private: SecretKey::from_bytes(bytes).unwrap_or_else(|e|{
+            warn!("Could not create derived key from provided bytes: {}", e);
+            SecretKey::from_bytes(&[0; 32]).unwrap()
+        }) }
+    }
+
+    /// Derive the keys for HMAC slots 1 or 2
+    /// 
+    /// # Errors
+    /// 
+    /// Return [BackupError::UnexpectedSlotNumber] if the given slot number is not 1 or 2.
+    pub fn derive_key(&self, slot: u8) -> Result<Vec<u8>> {
+        let slot_const: u8 = match slot {
+            1 => 0x30,
+            2 => 0x38,
+            s => {
+                warn!("Wrong slot for derivation key: {}", s);
+                bail!(BackupError::UnexpectedSlotNumber(s));
+            }
+        };
+        let mut data = [0u8; 32];
+        for i in 0u8..32 {
+            data[i as usize] = i + slot_const;
+        }
+        Ok(Sha256::new()
+            .chain_update(self.private.as_bytes())
+            .chain_update(&data)
+            .finalize()
+            .to_vec())
+    }
+}
+
+impl Default for DeriveKey {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -454,6 +526,9 @@ pub struct OnlyKey {
 
     //backup_key_id: BackupKeyID,
     backup_key: BackupKey,
+    
+    /// Derivation key
+    pub derivation_key: DeriveKey,
 }
 
 impl OnlyKey {
@@ -466,6 +541,7 @@ impl OnlyKey {
             //passphrase_key: None,
             //backup_key_id: BackupKeyID::None,
             backup_key: BackupKey::None,
+            derivation_key: DeriveKey::new(),
         }
     }
 
@@ -836,6 +912,10 @@ impl OnlyKey {
                             let account = profile.get_account_by_name_mut(slot_name).unwrap();
                             account.password = password.to_string();
                         },
+                        8 => {// OTP type
+                            info!("Ignoring OTP type (entry type 8)");
+                            index = next_block;
+                        }
                         9 => {// TOTP
                             trace!("Parsing TOTP {}", slot_nb);
                             let data_len = decrypted[index];
@@ -893,7 +973,7 @@ impl OnlyKey {
                         }
                         n => {
                             warn!("Ignoring entry type {}", n);
-                            index = next_block
+                            index = next_block;
                         },
                     }
                 },
@@ -979,7 +1059,7 @@ impl OnlyKey {
                             index += 32;
                         }
                         128 => {
-                            warn!("Ignoring unknown ECC key (slot 128)");
+                            warn!("Ignoring WEB derivation key (slot 128)");
                             // TODO
                             index += 33;
                         }
@@ -997,9 +1077,15 @@ impl OnlyKey {
                             index += 33;
                         }
                         132 => {
-                            warn!("Ignoring unknown ECC key (slot 132)");
-                            // TODO
-                            index += 33;
+                            warn!("Parsing derivation key (slot 132)");
+                            
+                            let _type = decrypted[index];
+                            index += 1;
+
+                            let raw_key = &decrypted[index..index+32];
+                            self.derivation_key = DeriveKey::from_bytes(raw_key.try_into().unwrap());
+                            
+                            index += 32;
                         }
                         200.. => {
                             // Resident Key

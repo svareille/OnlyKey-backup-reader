@@ -1,9 +1,8 @@
 use data_encoding::HEXLOWER;
-use okbr::{verify_backup, OnlyKey, ECCKeySlot, CharAfter, OTP, KeyFeature, ECCKeyType, RSAKeySlot};
+use okbr::{verify_backup, OnlyKey, ECCKeySlot, CharAfter, OTP, KeyFeature, ECCKeyType, RSAKeySlot,
+    SecretKey, DeriveKey};
 
 mod common;
-
-use ed25519_dalek::SecretKey;
 
 fn construct_expected_onlykey_passphrase() -> OnlyKey {
     let mut onlykey = OnlyKey::new();
@@ -38,7 +37,8 @@ fn construct_expected_onlykey_passphrase() -> OnlyKey {
     let account = onlykey.profile2.get_account_by_name_mut("1a").unwrap();
     account.label = "Application 1a2".to_string();
     account.otp = OTP::TOTP("BUGQ2DINBUGQ2DINBUGQ2DINBU======".to_string());
-    
+
+    onlykey.derivation_key = DeriveKey::from_bytes(&[5u8; 32]);
 
     let mut encryption_key = ECCKeySlot::new();
     encryption_key.label = "Encryption".to_string();
@@ -87,7 +87,8 @@ fn construct_expected_onlykey_ecc() -> OnlyKey {
     let account = onlykey.profile2.get_account_by_name_mut("1a").unwrap();
     account.label = "Application 1a2".to_string();
     account.otp = OTP::TOTP("BUGQ2DINBUGQ2DINBUGQ2DINBU======".to_string());
-    
+
+    onlykey.derivation_key = DeriveKey::from_bytes(&[5u8; 32]);
 
     let mut encryption_key = ECCKeySlot::new();
     encryption_key.label = "Encryption".to_string();
