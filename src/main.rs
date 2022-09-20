@@ -92,6 +92,8 @@ pub enum SelectedGeneral {
     None,
     Ecc(u16),
     Rsa(u16),
+    Hmac(u16),
+    DerivationKey,
 }
 
 struct App<'a> {
@@ -483,6 +485,13 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                             },
                                             SelectedGeneral::Rsa(i) => 
                                                 SelectedGeneral::Rsa(i%4+1),
+                                            SelectedGeneral::Hmac(i) =>
+                                                if i == 1 {
+                                                    SelectedGeneral::Hmac(2)
+                                                } else {
+                                                    SelectedGeneral::DerivationKey
+                                                },
+                                            SelectedGeneral::DerivationKey => SelectedGeneral::Hmac(1),
                                         };
                                     }
                                     KeyCode::Left => {
@@ -494,28 +503,51 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                                 SelectedGeneral::Ecc(if i == base {i+3} else {i-1})
                                             },
                                             SelectedGeneral::Rsa(i) =>
-                                                SelectedGeneral::Rsa(if i == 1 {4} else {i-1})
+                                                SelectedGeneral::Rsa(if i == 1 {4} else {i-1}),
+                                            SelectedGeneral::Hmac(i) => 
+                                                if i == 1 {
+                                                    SelectedGeneral::DerivationKey
+                                                } else {
+                                                    SelectedGeneral::Hmac(1)
+                                                },
+                                            SelectedGeneral::DerivationKey => SelectedGeneral::Hmac(2),
                                         };
                                     }
                                     KeyCode::Down => {
                                         app.current_general = match app.current_general {
                                             SelectedGeneral::None => SelectedGeneral::None,
+                                            SelectedGeneral::Rsa(i) =>
+                                                SelectedGeneral::Ecc(i),
                                             SelectedGeneral::Ecc(i) => {
                                                 // Move in one row : 1 <-> 2 <-> 3 <-> 4 <-> 1
                                                 let base = ((i-1) / 4)*4 + 1;
                                                 if base == 13 {
-                                                    SelectedGeneral::Rsa((i-1)%4+1)
+                                                    let index = (i-1)%4+1;
+                                                    if index <= 2 {
+                                                        SelectedGeneral::Hmac(index)
+                                                    } else if index == 3 {
+                                                        SelectedGeneral::DerivationKey
+                                                    } else {
+                                                        SelectedGeneral::Rsa(index)
+                                                    }
                                                 } else {
                                                     SelectedGeneral::Ecc(base + 4 + (i-1)%4)
                                                 }
                                             },
-                                            SelectedGeneral::Rsa(i) =>
-                                                SelectedGeneral::Ecc(i)
+                                            SelectedGeneral::Hmac(i) => SelectedGeneral::Rsa(i),
+                                            SelectedGeneral::DerivationKey => SelectedGeneral::Rsa(3),
                                         };
                                     }
                                     KeyCode::Up => {
                                         app.current_general = match app.current_general {
                                             SelectedGeneral::None => SelectedGeneral::None,
+                                            SelectedGeneral::Rsa(i) => if i <= 2 {
+                                                    SelectedGeneral::Hmac(i)
+                                                } else if i == 3 {
+                                                    SelectedGeneral::DerivationKey
+                                                } else {
+                                                    SelectedGeneral::Ecc(13 + i-1)
+                                                },
                                             SelectedGeneral::Ecc(i) => {
                                                 // Move in one row : 1 <-> 2 <-> 3 <-> 4 <-> 1
                                                 let base = ((i-1) / 4)*4 + 1;
@@ -525,8 +557,11 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                                     SelectedGeneral::Ecc(base - 4 + (i-1)%4)
                                                 }
                                             },
-                                            SelectedGeneral::Rsa(i) =>
-                                                SelectedGeneral::Ecc(13 + (i-1)%4)
+                                            SelectedGeneral::Hmac(i) => {
+                                                SelectedGeneral::Ecc(13 + i-1)
+                                            },
+                                            SelectedGeneral::DerivationKey => 
+                                                SelectedGeneral::Ecc(13 + 2),
                                         };
                                     }
                                     _ => {}
@@ -753,7 +788,9 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                                 }
                                                 _ => {}
                                             }
-                                        }
+                                        },
+                                        SelectedGeneral::Hmac(_) => {},
+                                        SelectedGeneral::DerivationKey => {},
                                     }
                                 }
                                 _ => {}

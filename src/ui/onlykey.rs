@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc, Timelike};
 use data_encoding::HEXUPPER;
-use okbr::{AccountSlot, OTP, ECCKeySlot, KeyFeature, RSAKeySlot};
+use okbr::{AccountSlot, OTP, ECCKeySlot, KeyFeature, RSAKeySlot, SecretKey, DeriveKey};
 use tui::{widgets::{Block, Widget, Table, Cell, Row, Gauge, Paragraph, Borders}, style::{Style, Color, Modifier}, layout::{Rect, Constraint, Alignment}, text::{Spans, Span, Text}};
 
 use crate::SelectedGeneral;
@@ -427,17 +427,20 @@ pub(crate) struct GeneralSelectionWidget<'a> {
     /// /// If the slot is not populated with a key, the label is None.
     /// If the slot is populated with a key without label, the label is Some("")
     ecc_labels: [Option<String>; 16],
+    /// True if an HMAC key is present, false otherwise.
+    hmac_present: [bool; 2],
     /// Item selected
     selected: SelectedGeneral,
 }
 
 impl<'a> GeneralSelectionWidget<'a> {
-    pub fn new(rsa_labels: [Option<String>; 4], ecc_labels: [Option<String>; 16]) -> GeneralSelectionWidget<'a>
+    pub fn new(rsa_labels: [Option<String>; 4], ecc_labels: [Option<String>; 16], hmac_present: [bool; 2]) -> GeneralSelectionWidget<'a>
     {
         GeneralSelectionWidget {
             block: None,
             rsa_labels,
             ecc_labels,
+            hmac_present,
             selected: SelectedGeneral::None,
         }
             
@@ -465,7 +468,7 @@ impl<'a> Widget for GeneralSelectionWidget<'a> {
             None => area,
         };
 
-        if text_area.height < 18 || text_area.width < 50 {
+        if text_area.height < 18 || text_area.width < 64 {
             buf.set_string(text_area.left(), text_area.top(), "Not enough space. Please widen the terminal.", Style::default());
             return;
         }
@@ -494,6 +497,7 @@ impl<'a> Widget for GeneralSelectionWidget<'a> {
             }
         }*/
 
+        // Display RSA
         for x in 0..4 {
             let rsa_label = &self.rsa_labels[x as usize];
             let label = rsa_label.clone().unwrap_or_default();
@@ -511,6 +515,7 @@ impl<'a> Widget for GeneralSelectionWidget<'a> {
 
         text_area.y += 3;
 
+        // Display ECC
         for y in 0..4 {
             for x in 0..4 {
                 let slot_nb = x + y*4 + 1;
@@ -527,6 +532,34 @@ impl<'a> Widget for GeneralSelectionWidget<'a> {
                 ecc_label.render(Rect { x: text_area.x+x*key_label_width, y: text_area.y+y*3, width: key_label_width, height: 3 }, buf);
             }
         }
+
+        text_area.y += 3*4;
+
+        // Display HMAC
+        for x in 0..2 {
+            
+            let hmac = Paragraph::new("")
+                .block(Block::default()
+                    .title(format!("HMAC {}", x+1))
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(if self.selected == SelectedGeneral::Hmac(x+1) {Color::LightRed} else if self.hmac_present[x as usize] {Color::White} else {Color::DarkGray}))
+                )
+                .style(Style::default())
+                .alignment(Alignment::Left);
+            hmac.render(Rect { x: text_area.x+x*key_label_width, y: text_area.y, width: key_label_width, height: 3 }, buf);
+        }
+
+        // Display derivation key
+        let derivation_key = Paragraph::new("")
+            .block(Block::default()
+                .title("Derivation key")
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(if self.selected == SelectedGeneral::DerivationKey {Color::LightRed} else {Color::White}))
+            )
+            .style(Style::default())
+            .alignment(Alignment::Left);
+            derivation_key.render(Rect { x: text_area.x+2*key_label_width, y: text_area.y, width: key_label_width, height: 3 }, buf);
+
     }
 }
 
@@ -732,6 +765,191 @@ impl<'a> Widget for RsaDataWidget<'a> {
             Row::new(vec![Cell::from("Types:").style(field_name_style), Cell::from(key_type)]),
             Row::new(vec![Cell::from("Usage:").style(field_name_style), Cell::from(key_usage)]),
             private_key_row,
+            ])
+            .style(Style::default())
+            .header(
+                Row::new(vec!["Field", "Value"])
+                    .style(Style::default().fg(Color::Blue).add_modifier(Modifier::ITALIC))
+            )
+            .widths(&constraints)
+            //.block(Block::default().borders(Borders::ALL))
+            .column_spacing(1);
+        table.render(text_area, buf);
+    }
+}
+
+pub struct HmacDataWidget<'a> {
+    /// A block to wrap the widget in
+    block: Option<Block<'a>>,
+    key: Option<SecretKey>,
+    show_secrets: bool,
+}
+
+impl<'a> HmacDataWidget<'a> {
+    pub fn new(key: Option<SecretKey>, show_secrets: bool) -> HmacDataWidget<'a>
+    {
+        HmacDataWidget {
+            block: None,
+            key,
+            show_secrets,
+        }
+    }
+
+    pub fn block(mut self, block: Block<'a>) -> HmacDataWidget<'a> {
+        self.block = Some(block);
+        self
+    }
+}
+
+impl<'a> Widget for HmacDataWidget<'a> {
+    fn render(mut self, area: tui::layout::Rect, buf: &mut tui::buffer::Buffer) {
+        let text_area = match self.block.take() {
+            Some(b) => {
+                let inner_area = b.inner(area);
+                b.render(area, buf);
+                inner_area
+            }
+            None => area,
+        };
+
+        if text_area.width < 26 {
+            buf.set_string(text_area.left(), text_area.top(), "Not enough space. Please widen the terminal.", Style::default());
+            return
+        }
+
+        let field_name_style = Style::default().fg(Color::Yellow);
+        let max_value_width = text_area.width-13;
+        let constraints = [Constraint::Length(12), Constraint::Length(max_value_width)];
+
+        let private_key_row = {
+            let mut height: u16 = 1;
+            let row = Row::new(vec![
+                Cell::from("Secret key:").style(field_name_style),
+                Cell::from(match &self.key {
+                    Some(key) => {
+                        if self.show_secrets {
+                            let res = split_string_in_chunks(&HEXUPPER.encode(key.0.as_bytes()), max_value_width.into());
+                            height = res.1 as u16;
+                            res.0
+                        } else {"****".to_owned()}
+                    },
+                    None => String::new(),
+                })
+                ]
+            );
+            row.height(height)
+        };
+
+        let table = Table::new(vec![
+            private_key_row,
+            ])
+            .style(Style::default())
+            .header(
+                Row::new(vec!["Field", "Value"])
+                    .style(Style::default().fg(Color::Blue).add_modifier(Modifier::ITALIC))
+            )
+            .widths(&constraints)
+            //.block(Block::default().borders(Borders::ALL))
+            .column_spacing(1);
+        table.render(text_area, buf);
+    }
+}
+
+pub struct DerivationKeyDataWidget<'a> {
+    /// A block to wrap the widget in
+    block: Option<Block<'a>>,
+    key: DeriveKey,
+    show_secrets: bool,
+}
+
+impl<'a> DerivationKeyDataWidget<'a> {
+    pub fn new(key: DeriveKey, show_secrets: bool) -> DerivationKeyDataWidget<'a>
+    {
+        DerivationKeyDataWidget {
+            block: None,
+            key,
+            show_secrets,
+        }
+    }
+
+    pub fn block(mut self, block: Block<'a>) -> DerivationKeyDataWidget<'a> {
+        self.block = Some(block);
+        self
+    }
+}
+
+impl<'a> Widget for DerivationKeyDataWidget<'a> {
+    fn render(mut self, area: tui::layout::Rect, buf: &mut tui::buffer::Buffer) {
+        let text_area = match self.block.take() {
+            Some(b) => {
+                let inner_area = b.inner(area);
+                b.render(area, buf);
+                inner_area
+            }
+            None => area,
+        };
+
+        if text_area.width < 26 {
+            buf.set_string(text_area.left(), text_area.top(), "Not enough space. Please widen the terminal.", Style::default());
+            return
+        }
+
+        let field_name_style = Style::default().fg(Color::Yellow);
+        let max_value_width = text_area.width-13;
+        let constraints = [Constraint::Length(15), Constraint::Length(max_value_width)];
+
+        let private_key_row = {
+            let mut height: u16 = 1;
+            let row = Row::new(vec![
+                Cell::from("Derivation key:").style(field_name_style),
+                Cell::from(
+                    if self.show_secrets {
+                        let res = split_string_in_chunks(&HEXUPPER.encode(self.key.private.as_bytes()), max_value_width.into());
+                        height = res.1 as u16;
+                        res.0
+                    } else {"****".to_owned()}
+                )
+                ]
+            );
+            row.height(height)
+        };
+
+        let derived_key_1_row = {
+            let mut height: u16 = 1;
+            let row = Row::new(vec![
+                Cell::from("HMAC key 1:").style(field_name_style),
+                Cell::from(
+                    if self.show_secrets {
+                        let res = split_string_in_chunks(&HEXUPPER.encode(&self.key.derive_key(1).unwrap()), max_value_width.into());
+                        height = res.1 as u16;
+                        res.0
+                    } else {"****".to_owned()}
+                )
+                ]
+            );
+            row.height(height)
+        };
+
+        let derived_key_2_row = {
+            let mut height: u16 = 1;
+            let row = Row::new(vec![
+                Cell::from("HMAC key 2:").style(field_name_style),
+                Cell::from(
+                    if self.show_secrets {
+                        let res = split_string_in_chunks(&HEXUPPER.encode(&self.key.derive_key(2).unwrap()), max_value_width.into());
+                        height = res.1 as u16;
+                        res.0
+                    } else {"****".to_owned()}
+                )
+                ]
+            );
+            row.height(height)
+        };
+        
+        let table = Table::new(vec![
+            private_key_row,
+            derived_key_1_row,
+            derived_key_2_row,
             ])
             .style(Style::default())
             .header(
