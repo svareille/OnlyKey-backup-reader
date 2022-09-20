@@ -162,7 +162,11 @@ impl<'a> Widget for OnlyKeyWidget<'a> {
             None => area,
         };
 
-        if text_area.height < 18 || text_area.width < 65 {
+        if text_area.height < 18 {
+            buf.set_string(text_area.left(), text_area.top(), "Not enough space. Please heigthen the terminal.", Style::default());
+            return
+        }
+        if text_area.width < 65 {
             buf.set_string(text_area.left(), text_area.top(), "Not enough space. Please widen the terminal.", Style::default());
             return
         }
@@ -468,7 +472,11 @@ impl<'a> Widget for GeneralSelectionWidget<'a> {
             None => area,
         };
 
-        if text_area.height < 18 || text_area.width < 64 {
+        if text_area.height < 18 {
+            buf.set_string(text_area.left(), text_area.top(), "Not enough space. Please heigthen the terminal.", Style::default());
+            return
+        }
+        if text_area.width < 64 {
             buf.set_string(text_area.left(), text_area.top(), "Not enough space. Please widen the terminal.", Style::default());
             return;
         }
