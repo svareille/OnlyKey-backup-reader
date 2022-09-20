@@ -10,7 +10,7 @@ use crate::res;
 
 use onlykey::{OnlyKeyWidget, AccountDataWidget};
 
-use self::onlykey::{GeneralSelectionWidget, EccDataWidget, split_string_in_chunks, RsaDataWidget};
+use self::onlykey::{GeneralSelectionWidget, EccDataWidget, split_string_in_chunks, RsaDataWidget, HmacDataWidget, DerivationKeyDataWidget};
 use crate::SelectedGeneral;
 
 pub fn key_style(text: &str) -> Span {
@@ -227,7 +227,7 @@ fn make_onlykey_general_view<B: Backend>(app: &App, chunk: Rect, f: &mut Frame<B
         .direction(Direction::Horizontal)
         .margin(0)
         .constraints([
-            Constraint::Length(60),
+            Constraint::Length(66),
             Constraint::Min(40),
             ].as_ref())
         .split(chunk);
@@ -235,6 +235,8 @@ fn make_onlykey_general_view<B: Backend>(app: &App, chunk: Rect, f: &mut Frame<B
     let mut ecc_labels: [Option<String>; 16] = Default::default();
 
     let mut rsa_labels: [Option<String>; 4] = Default::default();
+
+    let mut hmac_present= [false; 2];
 
     if let Some(ok) = &app.onlykey {
         for i in 1..=4 {
@@ -255,9 +257,10 @@ fn make_onlykey_general_view<B: Backend>(app: &App, chunk: Rect, f: &mut Frame<B
                 }
             }
         }
+        hmac_present = ok.hmac_keys.iter().map(|h| h.is_some()).collect::<Vec<bool>>().try_into().unwrap();
     }
 
-    let general_widget = GeneralSelectionWidget::new(rsa_labels, ecc_labels)
+    let general_widget = GeneralSelectionWidget::new(rsa_labels, ecc_labels, hmac_present)
         .block(
             Block::default()
                 .title("General")
@@ -311,6 +314,34 @@ fn make_onlykey_general_view<B: Backend>(app: &App, chunk: Rect, f: &mut Frame<B
                         error!("Error while getting RSA key {}: {}", 1, e);
                     }
                 }
+            };
+        }
+        SelectedGeneral::Hmac(i) => {
+            if let Some(ok) = &app.onlykey {
+                let data_widget = HmacDataWidget::new(ok.hmac_keys[(i-1) as usize].clone(), app.show_secrets)
+                    .block(
+                        Block::default()
+                            .title(format!("Hmac key {}", i))
+                            .borders(Borders::ALL)
+                            .style(Style::default().fg(Color::White))
+                            .border_type(if matches!(app.current_panel, Panel::DataDisplay) {BorderType::Double} else {BorderType::Plain})
+                            .border_style(Style::default().fg(if matches!(app.current_panel, Panel::DataDisplay) {Color::Cyan} else {Color::White}))
+                    );
+                f.render_widget(data_widget, hchunks[1]);
+            };
+        }
+        SelectedGeneral::DerivationKey => {
+            if let Some(ok) = &app.onlykey {
+                let data_widget = DerivationKeyDataWidget::new(ok.derivation_key.clone(), app.show_secrets)
+                    .block(
+                        Block::default()
+                            .title("Derivation key")
+                            .borders(Borders::ALL)
+                            .style(Style::default().fg(Color::White))
+                            .border_type(if matches!(app.current_panel, Panel::DataDisplay) {BorderType::Double} else {BorderType::Plain})
+                            .border_style(Style::default().fg(if matches!(app.current_panel, Panel::DataDisplay) {Color::Cyan} else {Color::White}))
+                    );
+                f.render_widget(data_widget, hchunks[1]);
             };
         }
     }

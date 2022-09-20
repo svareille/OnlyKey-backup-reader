@@ -278,6 +278,13 @@ impl PartialEq for SecretKey {
     }
 }
 
+impl Clone for SecretKey {
+    fn clone(&self) -> Self {
+        Self(ed25519_dalek::SecretKey::from_bytes(self.0.as_bytes()).unwrap())
+    }
+    
+}
+
 //#[derive(Clone)]
 #[derive(Debug, PartialEq)]
 pub struct ECCKeySlot {
@@ -363,9 +370,10 @@ impl KeySlot for ECCKeySlot {
     }
 }*/
 
+#[derive(Clone)]
 #[derive(PartialEq, Debug)]
 pub struct DeriveKey {
-    private: SecretKey,
+    pub private: SecretKey,
 }
 
 impl DeriveKey {
