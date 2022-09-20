@@ -529,6 +529,9 @@ pub struct OnlyKey {
     
     /// Derivation key
     pub derivation_key: DeriveKey,
+
+    /// HMAC keys
+    pub hmac_keys: [Option<SecretKey>; 2],
 }
 
 impl OnlyKey {
@@ -542,6 +545,7 @@ impl OnlyKey {
             //backup_key_id: BackupKeyID::None,
             backup_key: BackupKey::None,
             derivation_key: DeriveKey::new(),
+            hmac_keys: Default::default(),
         }
     }
 
@@ -1065,9 +1069,20 @@ impl OnlyKey {
                         }
                         129 | 130 => {
                             // HMAC
-                            warn!("Ignoring HMAC key");
-                            // TODO
-                            index += 33;
+                            warn!("Parsing HMAC key");
+                            slot_nb = if slot_nb == 130 {0} else {1};
+
+                            index += 1;
+
+                            let raw_key = &decrypted[index..index+32];
+                            self.hmac_keys[slot_nb as usize] = Some(SecretKey::from_bytes(raw_key)
+                                .unwrap_or_else(|e| {
+                                    warn!("Could not create secret ECC key: {:?}", e);
+                                    SecretKey::from_bytes(&[0; 32]).unwrap()
+                                })
+                            );
+
+                            index += 32;
                         }
                         131 => {
                             // Backup passphrase hash
