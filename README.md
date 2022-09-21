@@ -1,5 +1,5 @@
 # OnlyKey backup reader TUI
-[![Tests](https://github.com/SimonVareille/OnlyKey-backup-reader/actions/workflows/rust.yml/badge.svg?branch=main)](https://github.com/SimonVareille/OnlyKey-backup-reader/actions/workflows/rust.yml)
+[![Tests](https://github.com/SimonVareille/OnlyKey-backup-reader/actions/workflows/rust.yml/badge.svg?branch=main)](https://github.com/SimonVareille/OnlyKey-backup-reader/actions/workflows/rust.yml) ![GitHub release (latest by date)](https://img.shields.io/github/v/release/SimonVareille/OnlyKey-backup-reader)
 
 Read and use an [OnlyKey](https://onlykey.io/) backup from the terminal [WIP].
 
