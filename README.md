@@ -13,13 +13,17 @@ you to view and use an OnlyKey's backup as if it was loaded on an actual OnlyKey
 In case you lost access to your OnlyKey and don't have a spare one available, you can use this
 application as a **temporary** replacement.
 
-This app won't modify the backup, but could create a new one in future improvements.
+You can also use this app to obtain a raw unencrypted backup. Use the `-r` option to save this raw
+backup to a file. The best way to read this file afterward is to open it with an hexadecimal
+editor. The format of the backup is described in [backup-format.md](backup-format.md).
+
+This app won't modify the backup.
 
 Backups for the OnlyKey Duo should work too, but not tested.
 
 ## Features
 
-*OnlyKey backup reader* currently support and plan to support the following features.
+*OnlyKey backup reader* currently supports the following features.
 
 ### Backup decoding
 - [x] Read passphrase-protected backup  
@@ -37,11 +41,9 @@ For both profiles:
 - [x] URL
 - [x] Username
 - [x] Password
-- [ ] OTP
+- [x] OTP
   - [x] OATH-TOTP (Google Authenticator)
   - [x] OATH-TOTP Seed
-  - [ ] Yubikey OTP
-  - [ ] Yubikey OTP Seed
 
 For other data:
 
@@ -49,16 +51,33 @@ For other data:
   - [x] X25519
   - [x] NIST256P1
   - [x] SECP256K1
-- [ ] HMACSHA1
+- [x] HMACSHA1 secret
 - [X] RSA private keys
-- [ ] FIDO keys
-- [ ] FIDO2 keys
-- [ ] Yubikey Security info (Legacy)
+
+### Uncovered data
+
+#### Yubico OTP
+
+Yubico OTP is a counter-based OTP. Therefore, any backup made before using a Yubico OTP would be
+desynchronized (the counter of the backup would be lower than the counter of the key). There may be
+a "best effort" way to ensure the counter used by the backup is greater than the last one used on
+the key -- by setting it as `last_possible_value - 100` for example -- but this would require to
+re-register a new OTP afterward.
+
+Given that I don't use this feature, I won't implement it unless someone has a need for it.
+
+Feel free to create an [Issue](https://github.com/SimonVareille/OnlyKey-backup-reader/issues/new/choose)
+if you would use such a feature.
+
+#### FIDO and FIDO2
+
+Displaying FIDO and FIDO2 keys without actually using them woud be of little to no use. I don't
+plan to support them for the moment.
 
 ## Usage
 ```
 $ okbr.exe --help
-okbr 0.2.0
+okbr 1.0.0
 svareille
 A cross-platform OnlyKey backup reader
 
@@ -69,10 +88,11 @@ ARGS:
     <BACKUP>    Path to the OnlyKey backup to load
 
 OPTIONS:
-    -h, --help       Print help information
-    -q, --quiet      Less output per occurrence
-    -v, --verbose    More output per occurrence
-    -V, --version    Print version information
+    -h, --help                 Print help information
+    -q, --quiet                Less output per occurrence
+    -r, --raw-output <FILE>    If present, store the decrypted raw backup in the specified file
+    -v, --verbose              More output per occurrence
+    -V, --version              Print version information
 ```
 
 ### Inside the TUI: 
