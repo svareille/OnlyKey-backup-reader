@@ -5,7 +5,7 @@ use thiserror::Error;
 use data_encoding::{BASE32, BASE64};
 use log::{debug, info, error, trace, warn};
 use sha2::{Sha256, Digest};
-use aes_gcm::aead::{Aead, NewAead};
+use aes_gcm::{aead::{Aead}, KeyInit};
 use ed25519_dalek::{PublicKey};
 use x25519_dalek::x25519;
 use salsa20::hsalsa20;
