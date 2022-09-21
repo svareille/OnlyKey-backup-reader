@@ -30,10 +30,11 @@ log = "0.4"
 num_enum = "0.5"
 num-bigint-dig = "*"
 rsa = "*"
-salsa20 = { version = "0.9", features = ["hsalsa20"] }
+salsa20 = "0.10"
 sha2 = "0.10"
 thiserror = "1.0"
 tui = "0.19"
+typenum = "1.15"
 x25519-dalek = "1.2.0"
 
 [profile.release]

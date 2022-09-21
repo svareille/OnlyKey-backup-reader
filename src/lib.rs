@@ -8,7 +8,7 @@ use sha2::{Sha256, Digest};
 use aes_gcm::{aead::{Aead}, KeyInit};
 use ed25519_dalek::{PublicKey};
 use x25519_dalek::x25519;
-use salsa20::hsalsa20;
+use salsa20::hsalsa;
 use generic_array::GenericArray;
 use num_enum::TryFromPrimitive;
 use std::{convert::{TryInto}, fmt};
@@ -330,7 +330,7 @@ impl KeySlot for ECCKeySlot {
 
         let iv = &backup[payload_len..payload_len+12];
 
-        let shared_secret = hsalsa20(
+        let shared_secret = hsalsa::<typenum::consts::U10>(
             GenericArray::from_slice(&x25519(
                 *self.private_key.as_bytes(),
                 self.public_key().as_slice().try_into().expect("Public key should have been 32 bytes long"))),
