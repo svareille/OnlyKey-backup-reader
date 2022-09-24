@@ -12,6 +12,11 @@ keywords = ["tui", "onlykey"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[workspace]
+members = [
+    "yubico-otp-gen",
+]
+
 [dependencies]
 aes-gcm = "0.10"
 anyhow = "1.0"
@@ -37,6 +42,7 @@ thiserror = "1.0"
 tui = "0.19"
 typenum = "1.15"
 x25519-dalek = "1.2.0"
+yubico-otp-gen = {path = "./yubico-otp-gen"}
 
 [profile.release]
 opt-level = "s"

@@ -11,6 +11,7 @@ use x25519_dalek::x25519;
 use salsa20::hsalsa;
 use generic_array::GenericArray;
 use num_enum::TryFromPrimitive;
+use yubico_otp_gen::YubicoSeed;
 use std::{convert::{TryInto}, fmt};
 use byteorder::{ByteOrder, LittleEndian};
 
@@ -67,6 +68,7 @@ impl Default for CharAfter {
 pub enum OTP {
     None,
     TOTP(String),
+    YubicoOTP(YubicoSeed),
 }
 
 impl Default for OTP {
@@ -83,6 +85,9 @@ impl OTP {
                 let auth = GoogleAuthenticator::new();
                 auth.get_code(seed,0).unwrap_or_default()
             },
+            OTP::YubicoOTP(_) => {
+                todo!()
+            }
         }
     }
 }
@@ -962,7 +967,7 @@ impl OnlyKey {
                                 0 => {
                                     //Legacy Yubico OTP
                                     warn!("Ignoring Legacy Yubikey OTP {}", slot_nb);
-                                    index += 16 + 6 + 6;
+                                    index += 16 + 6 + 6 + 2;
                                 },
                                 _ => {
                                     // Slot Yubico OTPs
@@ -979,12 +984,35 @@ impl OnlyKey {
                                     let aes_key = &decrypted[index+public_id_len+6..index+public_id_len+6+16];
                                     
                                     index += 6 + 16 + 16;
+
+                                    let counter = LittleEndian::read_u16(&decrypted[index..index+2]);
+                                    index += 2;
+
+                                    let mut slot_nb = slot_nb;
+                                    let profile = match slot_nb {
+                                        1..=12 => {
+                                            slot_nb -= 1;
+                                            &mut self.profile1
+                                        },
+                                        13..=24 => {
+                                            slot_nb -= 13;
+                                            &mut self.profile2
+                                        },
+                                        nb => {
+                                            error!("Error reading backup: unexpected slot number {}", nb);
+                                            bail!(BackupError::UnexpectedSlotNumber(nb))
+                                        },
+                                    };
+                                    let slot_name = slot_names[slot_nb as usize];
+                                    let account = profile.get_account_by_name_mut(slot_name).unwrap();
+                                    account.otp = OTP::YubicoOTP(YubicoSeed::new(
+                                        public_id.to_vec(),
+                                        private_id.try_into().unwrap(),
+                                        aes_key.try_into().unwrap(),
+                                        counter + 300, // Add 300 to counter hoping it is enough to be accepted
+                                    ));
                                 }
                             }
-
-                            let counter = LittleEndian::read_u16(&decrypted[index..index+2]);
-
-                            index += 2;
                         },
                         15 => {// URL
                             trace!("Parsing URL {}", slot_nb);
