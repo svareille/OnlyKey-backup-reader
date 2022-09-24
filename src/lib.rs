@@ -12,6 +12,7 @@ use salsa20::hsalsa;
 use generic_array::GenericArray;
 use num_enum::TryFromPrimitive;
 use std::{convert::{TryInto}, fmt};
+use byteorder::{ByteOrder, LittleEndian};
 
 use google_authenticator::GoogleAuthenticator;
 
@@ -956,9 +957,34 @@ impl OnlyKey {
                             index += data_len as usize;
                         },
                         10 => {// Yubikey
-                            warn!("Ignoring Yubikey OTP {}", slot_nb);
-                            // TODO
-                            index += 6 + 6 + 16;
+                            trace!("Parsing Yubikey OTP {}", slot_nb);
+                            match slot_nb {
+                                0 => {
+                                    //Legacy Yubico OTP
+                                    warn!("Ignoring Legacy Yubikey OTP {}", slot_nb);
+                                    index += 16 + 6 + 6;
+                                },
+                                _ => {
+                                    // Slot Yubico OTPs
+                                    let mut public_id_len = 16;
+                                    for i in (28..38).rev() {
+                                        if decrypted[index+i] != 0 {
+                                            break;
+                                        }
+                                        public_id_len -= 1;
+                                    }
+
+                                    let public_id = &decrypted[index..index+public_id_len];
+                                    let private_id = &decrypted[index+public_id_len..index+public_id_len+6];
+                                    let aes_key = &decrypted[index+public_id_len+6..index+public_id_len+6+16];
+                                    
+                                    index += 6 + 16 + 16;
+                                }
+                            }
+
+                            let counter = LittleEndian::read_u16(&decrypted[index..index+2]);
+
+                            index += 2;
                         },
                         15 => {// URL
                             trace!("Parsing URL {}", slot_nb);
