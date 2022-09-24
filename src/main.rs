@@ -651,6 +651,9 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                                         OTP::TOTP(seed)=> {
                                                             seed.clone()
                                                         }
+                                                        OTP::YubicoOTP(_) => {
+                                                            todo!();
+                                                        }
                                                     }) {
                                                         Ok(_) => {
                                                             app.clipboard_status_text = "OTP seed copied to clipboard".to_owned();

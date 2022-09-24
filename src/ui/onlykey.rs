@@ -343,6 +343,9 @@ impl<'a> Widget for AccountDataWidget<'a> {
                             } else {
                                 "****".to_owned()
                             }
+                        },
+                        OTP::YubicoOTP(_) => {
+                            todo!();
                         }
                     },
                     None => String::new(),
@@ -393,6 +396,9 @@ impl<'a> Widget for AccountDataWidget<'a> {
                     let now: DateTime<Utc> = Utc::now();
                     rem_secs = 29 - (now.second() % 30) as u16;
                 },
+                OTP::YubicoOTP(_) => {
+                    todo!();
+                }
             }
         }
 
