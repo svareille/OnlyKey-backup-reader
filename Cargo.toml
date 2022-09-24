@@ -16,6 +16,7 @@ keywords = ["tui", "onlykey"]
 aes-gcm = "0.10"
 anyhow = "1.0"
 bitflags = "1.3"
+byteorder = "1.4"
 chrono = "0.4"
 clap = { version = "3.2", features = ["derive"] }
 clap-verbosity-flag = "1.0"
