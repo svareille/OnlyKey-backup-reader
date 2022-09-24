@@ -662,6 +662,7 @@ dependencies = [
  "aes-gcm",
  "anyhow",
  "bitflags",
+ "byteorder",
  "chrono",
  "clap",
  "clap-verbosity-flag",
@@ -682,6 +683,7 @@ dependencies = [
  "tui",
  "typenum",
  "x25519-dalek",
+ "yubico-otp-gen",
 ]
 
 [[package]]
@@ -1366,6 +1368,10 @@ dependencies = [
  "libc",
  "log",
 ]
+
+[[package]]
+name = "yubico-otp-gen"
+version = "0.1.0"
 
 [[package]]
 name = "zeroize"
