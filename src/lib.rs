@@ -1009,7 +1009,7 @@ impl OnlyKey {
                                         public_id.to_vec(),
                                         private_id.try_into().unwrap(),
                                         aes_key.try_into().unwrap(),
-                                        counter + 300, // Add 300 to counter hoping it is enough to be accepted
+                                        counter,
                                     ));
                                 }
                             }
