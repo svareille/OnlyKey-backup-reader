@@ -13,7 +13,7 @@ use generic_array::GenericArray;
 use num_enum::TryFromPrimitive;
 use yubico_otp_gen::YubicoSeed;
 use std::{convert::{TryInto}, fmt};
-use byteorder::{ByteOrder, LittleEndian};
+use byteorder::{ByteOrder, BigEndian};
 
 use google_authenticator::GoogleAuthenticator;
 
@@ -985,7 +985,7 @@ impl OnlyKey {
                                     
                                     index += 6 + 16 + 16;
 
-                                    let counter = LittleEndian::read_u16(&decrypted[index..index+2]);
+                                    let counter = BigEndian::read_u16(&decrypted[index..index+2]);
                                     index += 2;
 
                                     let mut slot_nb = slot_nb;
