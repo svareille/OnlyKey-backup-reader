@@ -44,6 +44,8 @@ For both profiles:
 - [x] OTP
   - [x] OATH-TOTP (Google Authenticator)
   - [x] OATH-TOTP Seed
+  - [x] Yubico OTP
+  - [x] Yubico OTP Seed
 
 For other data:
 
@@ -53,21 +55,22 @@ For other data:
   - [x] SECP256K1
 - [x] HMACSHA1 secret
 - [X] RSA private keys
-
-### Uncovered data
+  
+### Notes
 
 #### Yubico OTP
 
 Yubico OTP is a counter-based OTP. Therefore, any backup made before using a Yubico OTP would be
-desynchronized (the counter of the backup would be lower than the counter of the key). There may be
-a "best effort" way to ensure the counter used by the backup is greater than the last one used on
-the key -- by setting it as `last_possible_value - 100` for example -- but this would require to
-re-register a new OTP afterward.
+desynchronized (the counter of the backup would be lower than the counter of the key). To overcome
+this *OnlyKey backup reader* enables you to increment the counter (by pressing *+*). 
 
-Given that I don't use this feature, I won't implement it unless someone has a need for it.
+Given that I don't use this feature, the testing process has been quite light. This should work, but
+I can't guaranty it.
 
 Feel free to create an [Issue](https://github.com/SimonVareille/OnlyKey-backup-reader/issues/new/choose)
-if you would use such a feature.
+if you find a bug.
+
+### Uncovered data
 
 #### FIDO and FIDO2
 
@@ -77,7 +80,7 @@ plan to support them for the moment.
 ## Usage
 ```
 $ okbr.exe --help
-okbr 1.0.0
+okbr 1.1.0
 svareille
 A cross-platform OnlyKey backup reader
 
@@ -112,6 +115,8 @@ When a *profile* panel is on screen:
 - Press *p* to copy the password into the clipboard.
 - Press *o* to copy the OTP into the clipboard.
 - Press *O* to copy the OTP seed into the clipboard.
+- Press *r* to reload (recompute) the OTP.
+- Press *+* to increment the OTP counter (for Yubico OTP).
   
 When an ECC key is selected on the *general* panel:
 - Press *k* to copy the private key into the clipboard.
