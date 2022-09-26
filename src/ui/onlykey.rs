@@ -344,8 +344,30 @@ impl<'a> Widget for AccountDataWidget<'a> {
                                 "****".to_owned()
                             }
                         },
-                        OTP::YubicoOTP(_) => {
-                            todo!();
+                        OTP::YubicoOTP(yubico) => {
+                            if self.show_secrets {
+                                let pub_id = yubico_otp_gen::MODHEX.encode(&yubico.public_id);
+                                let priv_id = yubico_otp_gen::MODHEX.encode(&yubico.private_id);
+                                let key = yubico_otp_gen::MODHEX.encode(&yubico.key);
+
+                                let mut s = String::new();
+
+                                let res = split_string_in_chunks(&format!("Pub id:  {}", pub_id), max_value_width.into());
+                                s += &res.0;
+                                height = res.1 as u16;
+                                let res = split_string_in_chunks(&format!("Priv id: {}", priv_id), max_value_width.into());
+                                s += &format!("\n{}", &res.0);
+                                height += res.1 as u16;
+                                let res = split_string_in_chunks(&format!("AES key: {}", key), max_value_width.into());
+                                s += &format!("\n{}", &res.0);
+                                height += res.1 as u16;
+                                let res = split_string_in_chunks(&format!("Counter: {}", yubico.counter), max_value_width.into());
+                                s += &format!("\n{}", &res.0);
+                                height += res.1 as u16;
+                                s
+                            } else {
+                                "****".to_owned()
+                            }
                         }
                     },
                     None => String::new(),
@@ -356,8 +378,6 @@ impl<'a> Widget for AccountDataWidget<'a> {
             row.height(height)
         };
 
-
-
         let table = Table::new(vec![
             Row::new(vec![Cell::from("Label:").style(field_name_style), Cell::from(match &self.account {
                 Some(account) => &account.label,
@@ -367,10 +387,19 @@ impl<'a> Widget for AccountDataWidget<'a> {
             username_row,
             password_row,
             otp_seed_row,
-            Row::new(vec![Cell::from("OTP:").style(field_name_style), Cell::from(match &self.account {
-                Some(account) => if self.show_secrets { account.get_computed_otp() } else { "****".to_owned()},
-                None => String::new(),
-            })]).height(2),
+            {
+                let mut height = 1;
+                let row = Row::new(vec![Cell::from("OTP:").style(field_name_style), Cell::from(match &self.account {
+                    Some(account) => if self.show_secrets {
+                        let res = split_string_in_chunks(&account.get_computed_otp(), max_value_width.into());
+                        height = res.1 as u16;
+                        res.0
+                        } else { "****".to_owned()},
+                    None => String::new(),
+                })]);
+                to_otp_height += height;
+                row.height(height+1)
+            },
             ])
             .style(Style::default())
             .header(
@@ -396,9 +425,7 @@ impl<'a> Widget for AccountDataWidget<'a> {
                     let now: DateTime<Utc> = Utc::now();
                     rem_secs = 29 - (now.second() % 30) as u16;
                 },
-                OTP::YubicoOTP(_) => {
-                    todo!();
-                }
+                OTP::YubicoOTP(_) => {}
             }
         }
 
