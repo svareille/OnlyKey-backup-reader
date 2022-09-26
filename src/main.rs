@@ -723,6 +723,27 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                                         }
                                                     }
                                                 }
+                                                KeyCode::Char('+') => {
+                                                    debug!("Increment OTP counter");
+                                                    if let Some(ok) = &mut app.onlykey {
+                                                        let profile = match app.current_profile {
+                                                            0 => Some(&mut ok.profile1),
+                                                            1 => Some(&mut ok.profile2),
+                                                            n => {
+                                                                warn!("Nonexistant profile {}! This shouldn't have happened!", n);
+                                                                None
+                                                            }
+                                                        };
+                                                        if let Some(profile) = profile {
+                                                            let account = profile.get_account_by_name_mut(&account_name).unwrap();
+                                                            if let OTP::YubicoOTP(yubico) = &mut account.otp {
+                                                                debug!("Increment Yubico OTP counter");
+                                                                yubico.counter += 1;
+                                                                account.generate_new_otp();
+                                                            }
+                                                        }
+                                                    }
+                                                }
                                                 _ => {}
                                             }
                                         },
