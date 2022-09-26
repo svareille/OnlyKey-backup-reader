@@ -324,6 +324,31 @@ fn setup_logger(level: log::LevelFilter) -> Result<(), fern::InitError> {
 fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Duration,) -> Result<()> {
     let mut last_tick = Instant::now();
     loop {
+        // Compute the OTP
+        let account_name = app.get_current_account_name();
+
+        if let Some(ok) = &mut app.onlykey {
+            let profile = match app.current_profile {
+                0 => Some(&mut ok.profile1),
+                1 => Some(&mut ok.profile2),
+                n => {
+                    warn!("Nonexistant profile {}! This shouldn't have happened!", n);
+                    None
+                }
+            };
+            if let Some(profile) = profile {
+                let account = profile.get_account_by_name_mut(&account_name).unwrap();
+                match account.otp {
+                    OTP::None | OTP::TOTP(_) => account.generate_new_otp(),
+                    OTP::YubicoOTP(_) => {
+                        if account.get_computed_otp().is_empty() {
+                            account.generate_new_otp();
+                        }
+                    },
+                }
+            }
+        }
+
         terminal.draw(|f| ui::ui(f, &mut app))?;
 
         let timeout = tick_rate
@@ -677,6 +702,23 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                                         }
                                                     }
                                                 },
+                                                KeyCode::Char('r') => {
+                                                    debug!("Reload OTP");
+                                                    if let Some(ok) = &mut app.onlykey {
+                                                        let profile = match app.current_profile {
+                                                            0 => Some(&mut ok.profile1),
+                                                            1 => Some(&mut ok.profile2),
+                                                            n => {
+                                                                warn!("Nonexistant profile {}! This shouldn't have happened!", n);
+                                                                None
+                                                            }
+                                                        };
+                                                        if let Some(profile) = profile {
+                                                            let account = profile.get_account_by_name_mut(&account_name).unwrap();
+                                                            account.generate_new_otp();
+                                                        }
+                                                    }
+                                                }
                                                 _ => {}
                                             }
                                         },

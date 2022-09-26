@@ -47,6 +47,10 @@ pub(crate) fn help_text() -> Vec<Spans<'static>> {
             Span::raw("Press "), key_style("O"), Span::raw(" to copy the OTP seed into the clipboard."),
             ]
         ),
+        Spans::from(vec![
+            Span::raw("Press "), key_style("r"), Span::raw(" to reload (recompute) the OTP."),
+            ]
+        ),
         Spans::from(Span::raw("")),
         Spans::from(Span::styled("When a key in the general panel is selected:", Style::default().add_modifier(Modifier::ITALIC))),
         Spans::from(vec![
