@@ -78,15 +78,15 @@ impl Default for OTP {
 }
 
 impl OTP {
-    pub fn compute(&self) -> String {
+    pub fn compute(&mut self) -> String {
         match self {
             OTP::None => String::new(),
             OTP::TOTP(seed) => {
                 let auth = GoogleAuthenticator::new();
                 auth.get_code(seed,0).unwrap_or_default()
             },
-            OTP::YubicoOTP(_) => {
-                todo!()
+            OTP::YubicoOTP(seed) => {
+                seed.generate_otp().to_string()
             }
         }
     }
