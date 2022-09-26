@@ -51,6 +51,10 @@ pub(crate) fn help_text() -> Vec<Spans<'static>> {
             Span::raw("Press "), key_style("r"), Span::raw(" to reload (recompute) the OTP."),
             ]
         ),
+        Spans::from(vec![
+            Span::raw("Press "), key_style("+"), Span::raw(" to increment the OTP counter (for Yubico OTP)."),
+            ]
+        ),
         Spans::from(Span::raw("")),
         Spans::from(Span::styled("When a key in the general panel is selected:", Style::default().add_modifier(Modifier::ITALIC))),
         Spans::from(vec![
