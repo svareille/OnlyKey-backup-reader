@@ -102,6 +102,8 @@ pub struct AccountSlot {
     pub password: String,
     pub otp: OTP,
 
+    computed_otp: String,
+
     pub after_password: CharAfter,
 
     pub delay_before_password: u8,
@@ -124,6 +126,14 @@ impl AccountSlot {
         res += &format!("delay before password: {}\n", self.delay_before_password);
         res
     }
+
+    pub fn generate_new_otp(&mut self) {
+        self.computed_otp = self.otp.compute();
+    }
+
+    pub fn get_computed_otp(&self) -> String {
+        self.computed_otp.clone()
+   }
 }
 
 /*#[derive(Clone)]
