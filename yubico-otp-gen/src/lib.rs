@@ -107,7 +107,14 @@ impl YubicoSeed {
     pub fn generate_otp(&mut self) -> YubicoOtp {
         // This lossy conversion is not a problem. The timestamp should not overlap.
         let timestamp = (self.timestamp + (self.instant.elapsed().as_millis()/125) as u32) % 16777216;
-        self.session_counter += 1;
+
+        self.session_counter = match self.session_counter.checked_add(1) {
+            Some(c) => c,
+            None => {
+                self.counter += 1;
+                0
+            }
+        };
         
         YubicoOtp{
             public_id: self.public_id.clone(),
