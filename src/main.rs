@@ -666,7 +666,8 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                                 },
                                                 KeyCode::Char('o') => {
                                                     debug!("Copying OTP to clipboard");
-                                                    match app.set_clipboard(account.otp.compute()) {
+                                                    let otp = account.get_computed_otp();
+                                                    match app.set_clipboard(otp) {
                                                         Ok(_) => {
                                                             app.clipboard_status_text = "OTP copied to clipboard".to_owned();
                                                         },
