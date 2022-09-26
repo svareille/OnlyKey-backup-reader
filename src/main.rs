@@ -676,8 +676,12 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                                         OTP::TOTP(seed)=> {
                                                             seed.clone()
                                                         }
-                                                        OTP::YubicoOTP(_) => {
-                                                            todo!();
+                                                        OTP::YubicoOTP(yubico) => {
+                                                            let pub_id = yubico_otp_gen::MODHEX.encode(&yubico.public_id);
+                                                            let priv_id = yubico_otp_gen::MODHEX.encode(&yubico.private_id);
+                                                            let key = yubico_otp_gen::MODHEX.encode(&yubico.key);
+                                                            
+                                                            format!("{}\n{}\n{}", pub_id, priv_id, key)
                                                         }
                                                     }) {
                                                         Ok(_) => {
