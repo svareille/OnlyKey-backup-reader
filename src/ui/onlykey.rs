@@ -368,7 +368,7 @@ impl<'a> Widget for AccountDataWidget<'a> {
             password_row,
             otp_seed_row,
             Row::new(vec![Cell::from("OTP:").style(field_name_style), Cell::from(match &self.account {
-                Some(account) => if self.show_secrets { account.otp.compute() } else { "****".to_owned()},
+                Some(account) => if self.show_secrets { account.get_computed_otp() } else { "****".to_owned()},
                 None => String::new(),
             })]).height(2),
             ])
