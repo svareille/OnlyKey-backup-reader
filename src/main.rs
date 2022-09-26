@@ -208,8 +208,8 @@ impl<'a> App<'a> {
         };
     }
 
-    pub fn get_current_account_name(&self) -> &str {
-        ["1a", "2a", "1b", "2b", "3a", "4a", "3b", "4b", "5a", "6a", "5b", "6b"][self.current_account]
+    pub fn get_current_account_name(&self) -> String {
+        ["1a", "2a", "1b", "2b", "3a", "4a", "3b", "4b", "5a", "6a", "5b", "6b"][self.current_account].to_owned()
     }
 
     fn on_tick(&mut self, elapsed: Duration) {
@@ -593,7 +593,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                     };
                                     let account_name = app.get_current_account_name();
                                     debug!("Working on account {}", account_name);
-                                    match profile.get_account_by_name(account_name) {
+                                    match profile.get_account_by_name(&account_name) {
                                         Ok(account) => {
                                             match key.code {
                                                 KeyCode::Char('l') => {

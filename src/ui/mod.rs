@@ -199,7 +199,7 @@ fn make_onlykey_profile_view<B: Backend>(app: &App, chunk: Rect, f: &mut Frame<B
     let account = match profile {
         Some(profile) => {
             let account_name = app.get_current_account_name();
-            match profile.get_account_by_name(account_name) {
+            match profile.get_account_by_name(&account_name) {
                 Ok(account) => Some(account),
                 Err(e) => {
                     error!("Error while getting account {} on profile {}: {}", account_name, app.current_profile, e);
