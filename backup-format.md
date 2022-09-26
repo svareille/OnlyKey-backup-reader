@@ -197,6 +197,14 @@ With `type`:
 ```
 Total: 4+`length` bytes
 
+#### Yubico OTP
+```
+| 1B |     1B      | 1B |   length  |     6B     |   16B   |   16-length  | 2B
+ 0xFF <slot number> 0x0a <public id> <private id> <aes key> <padding 0x00> <counter>
+```
+With `6 <= length <= 16`.
+Total: 43 bytes
+
 #### Authentication state (fido)
 ```
 | 1B | 1B |       1B       |     1B     |      32B      |    32B   |  2B  |    4B    |
