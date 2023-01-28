@@ -1,5 +1,5 @@
 # OnlyKey backup reader TUI
-[![Tests](https://github.com/SimonVareille/OnlyKey-backup-reader/actions/workflows/rust.yml/badge.svg?branch=main)](https://github.com/SimonVareille/OnlyKey-backup-reader/actions/workflows/rust.yml) [![GitHub release (latest by date)](https://img.shields.io/github/v/release/SimonVareille/OnlyKey-backup-reader)](https://github.com/SimonVareille/OnlyKey-backup-reader/releases/latest)
+[![Tests](https://github.com/svareille/OnlyKey-backup-reader/actions/workflows/rust.yml/badge.svg?branch=main)](https://github.com/svareille/OnlyKey-backup-reader/actions/workflows/rust.yml) [![GitHub release (latest by date)](https://img.shields.io/github/v/release/svareille/OnlyKey-backup-reader)](https://github.com/svareille/OnlyKey-backup-reader/releases/latest)
 
 Read and use an [OnlyKey](https://onlykey.io/) backup from the terminal.
 
@@ -67,14 +67,14 @@ this *OnlyKey backup reader* enables you to increment the counter (by pressing *
 Given that I don't use this feature, the testing process has been quite light. This should work, but
 I can't guaranty it.
 
-Feel free to create an [Issue](https://github.com/SimonVareille/OnlyKey-backup-reader/issues/new/choose)
+Feel free to create an [Issue](https://github.com/svareille/OnlyKey-backup-reader/issues/new/choose)
 if you find a bug.
 
 ### Uncovered data
 
 #### FIDO and FIDO2
 
-Displaying FIDO and FIDO2 keys without actually using them woud be of little to no use. I don't
+Displaying FIDO and FIDO2 keys without actually using them would be of little to no use. I don't
 plan to support them for the moment.
 
 ## Usage

@@ -155,7 +155,7 @@ fn make_onlykey_profile_view<B: Backend>(app: &App, chunk: Rect, f: &mut Frame<B
             0 => Some(& ok.profile1),
             1 => Some(& ok.profile2),
             _ => {
-                error!("Nonexistant profile! This shouldn't have happened!");
+                error!("Nonexistent profile! This shouldn't have happened!");
                 return;
             },
         }

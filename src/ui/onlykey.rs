@@ -163,7 +163,7 @@ impl<'a> Widget for OnlyKeyWidget<'a> {
         };
 
         if text_area.height < 18 {
-            buf.set_string(text_area.left(), text_area.top(), "Not enough space. Please heigthen the terminal.", Style::default());
+            buf.set_string(text_area.left(), text_area.top(), "Not enough space. Please heighten the terminal.", Style::default());
             return
         }
         if text_area.width < 65 {
@@ -506,7 +506,7 @@ impl<'a> Widget for GeneralSelectionWidget<'a> {
         };
 
         if text_area.height < 18 {
-            buf.set_string(text_area.left(), text_area.top(), "Not enough space. Please heigthen the terminal.", Style::default());
+            buf.set_string(text_area.left(), text_area.top(), "Not enough space. Please heighten the terminal.", Style::default());
             return
         }
         if text_area.width < 64 {

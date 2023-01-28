@@ -289,8 +289,8 @@ fn main() -> Result<()> {
     info!("Terminal properly restored.");
 
     if let Err(err) = res {
-        error!("Error occured: {:?}", err);
-        println!("Error occured: {:?}", err);
+        error!("Error occurred: {:?}", err);
+        println!("Error occurred: {:?}", err);
     }
 
     Ok(())
@@ -332,7 +332,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                 0 => Some(&mut ok.profile1),
                 1 => Some(&mut ok.profile2),
                 n => {
-                    warn!("Nonexistant profile {}! This shouldn't have happened!", n);
+                    warn!("Nonexistent profile {}! This shouldn't have happened!", n);
                     None
                 }
             };
@@ -615,8 +615,8 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                         0 => &ok.profile1,
                                         1 => &ok.profile2,
                                         n => {
-                                            error!("Nonexistant profile {}! This shouldn't have happened!", n);
-                                            bail!("Nonexistant profile {}", n);
+                                            error!("Nonexistent profile {}! This shouldn't have happened!", n);
+                                            bail!("Nonexistent profile {}", n);
                                         },
                                     };
                                     let account_name = app.get_current_account_name();
@@ -716,7 +716,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                                             0 => Some(&mut ok.profile1),
                                                             1 => Some(&mut ok.profile2),
                                                             n => {
-                                                                warn!("Nonexistant profile {}! This shouldn't have happened!", n);
+                                                                warn!("Nonexistent profile {}! This shouldn't have happened!", n);
                                                                 None
                                                             }
                                                         };
@@ -733,7 +733,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                                             0 => Some(&mut ok.profile1),
                                                             1 => Some(&mut ok.profile2),
                                                             n => {
-                                                                warn!("Nonexistant profile {}! This shouldn't have happened!", n);
+                                                                warn!("Nonexistent profile {}! This shouldn't have happened!", n);
                                                                 None
                                                             }
                                                         };
@@ -929,7 +929,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                                         Err(error) => {
                                                             error!("Failed to load backup: {}", error);
                                                             match error.downcast_ref::<BackupError>() {
-                                                                Some(BackupError::KeyTypeNoMatch) | Some(BackupError::UnexpecteByte(_))  | Some(BackupError::UnexpectedSlotNumber(_))=> {
+                                                                Some(BackupError::KeyTypeNoMatch) | Some(BackupError::UnexpectedByte(_))  | Some(BackupError::UnexpectedSlotNumber(_))=> {
                                                                     app.set_error("Failed to load backup. Retry with another passphrase. If the loading keep failing, the backup may be unusable.");
                                                                 },
                                                                 Some(_) | None => {
@@ -996,7 +996,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                                                             Some(BackupError::KeyTypeNoMatch) => {
                                                                                 app.set_error("Failed to load backup: The ECC key type provided does not match the one used for encryption.");
                                                                             }
-                                                                            Some(BackupError::UnexpecteByte(_))  | Some(BackupError::UnexpectedSlotNumber(_))=> {
+                                                                            Some(BackupError::UnexpectedByte(_))  | Some(BackupError::UnexpectedSlotNumber(_))=> {
                                                                                 app.set_error("Failed to load backup. Retry with another ECC key. If the loading keep failing, the backup may be unusable.");
                                                                             },
                                                                             Some(_) | None => {
@@ -1067,7 +1067,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
                                                                         Some(BackupError::KeyTypeNoMatch) => {
                                                                             app.set_error("Failed to load backup: The RSA key type provided does not match the one used for encryption.");
                                                                         }
-                                                                        Some(BackupError::UnexpecteByte(_))  | Some(BackupError::UnexpectedSlotNumber(_))=> {
+                                                                        Some(BackupError::UnexpectedByte(_))  | Some(BackupError::UnexpectedSlotNumber(_))=> {
                                                                             app.set_error("Failed to load backup. Retry with another RSA key. If the loading keep failing, the backup may be unusable.");
                                                                         },
                                                                         Some(_) | None => {

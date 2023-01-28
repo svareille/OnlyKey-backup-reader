@@ -43,7 +43,7 @@ pub enum BackupError{
     #[error("unexpected slot number `{0}`")]
     UnexpectedSlotNumber(u8),
     #[error("unexpected byte `0x{0:02x}`")]
-    UnexpecteByte(u8),
+    UnexpectedByte(u8),
     #[error("computation error `{0}`")]
     ComputationError(String)
 }
@@ -241,7 +241,7 @@ impl KeySlot for RSAKeySlot {
         let cipher = match aes_gcm::Aes256Gcm::new_from_slice(&aes_key) {
             Ok(cipher) => cipher,
             Err(e) => {
-                error!("Cound not create AES cipher: {}", e);
+                error!("Could not create AES cipher: {}", e);
                 bail!(e);
             },
         };
@@ -652,7 +652,7 @@ impl OnlyKey {
 
     /// Returns the designated backup key as a reference.
     pub fn backup_key(&self, ) -> Option<& dyn KeySlot> {
-        trace!("Getting bakup key");
+        trace!("Getting backup key");
         match &self.backup_key {
             BackupKey::Ecc(key) => {
                 Some(key)
@@ -891,7 +891,7 @@ impl OnlyKey {
                                 2 => CharAfter::Return,
                                 n => {
                                     error!("Error reading backup: unexpected after password value {}", n);
-                                    bail!(BackupError::UnexpecteByte(n))
+                                    bail!(BackupError::UnexpectedByte(n))
                                 },
                             };
                         },
@@ -1089,7 +1089,7 @@ impl OnlyKey {
                                     Some(feature) => feature,
                                     None => {
                                         error!("Unknown RSA key feature 0x{:02x}", r#type & 0xF0);
-                                        bail!(BackupError::UnexpecteByte(r#type))
+                                        bail!(BackupError::UnexpectedByte(r#type))
                                     },
                                 },
                             )?);
@@ -1116,7 +1116,7 @@ impl OnlyKey {
                                 Some(feature) => feature,
                                 None => {
                                     error!("Unknown ECC key feature 0x{:02x}", r#type & 0xF0);
-                                    bail!(BackupError::UnexpecteByte(r#type))
+                                    bail!(BackupError::UnexpectedByte(r#type))
                                 },
                             };
                             
@@ -1126,7 +1126,7 @@ impl OnlyKey {
                                 3 => ECCKeyType::SECP256K1,
                                 n => {
                                     error!("Unknown ECC key type 0x{:02x}", n);
-                                    bail!(BackupError::UnexpecteByte(r#type))
+                                    bail!(BackupError::UnexpectedByte(r#type))
                                 },
                             };
                             ecc_key.private_key = SecretKey::from_bytes(raw_key).unwrap_or_else(|e| {
@@ -1190,7 +1190,7 @@ impl OnlyKey {
                 },
                 num => {
                     error!("Error reading backup: unexpected byte 0x{:x}", num);
-                    bail!(BackupError::UnexpecteByte(num))
+                    bail!(BackupError::UnexpectedByte(num))
                 }
             }
         }
