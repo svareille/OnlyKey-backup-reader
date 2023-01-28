@@ -640,7 +640,7 @@ impl<'a> Widget for StatusBar<'a> {
             let text_len = self.clipboard_text.len();
             buf.set_string(text_area.left(), text_area.top(), self.clipboard_text, Style::default());
 
-            let gauge_area = Rect{ x: text_area.x + text_len as u16 + 1, y: text_area.y, width: (text_area.width - 1 - text_len as u16).min(self.clipboard_total.as_secs() as u16) as u16, height: 1 };
+            let gauge_area = Rect{ x: text_area.x + text_len as u16 + 1, y: text_area.y, width: (text_area.width - 1 - text_len as u16).min(self.clipboard_total.as_secs() as u16), height: 1 };
 
             let clipboard_gauge = Gauge::default()
                 .gauge_style(Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD))

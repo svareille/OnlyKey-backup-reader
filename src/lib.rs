@@ -425,7 +425,7 @@ impl DeriveKey {
         }
         Ok(Sha256::new()
             .chain_update(self.private.as_bytes())
-            .chain_update(&data)
+            .chain_update(data)
             .finalize()
             .to_vec())
     }
@@ -1143,7 +1143,7 @@ impl OnlyKey {
                         129 | 130 => {
                             // HMAC
                             warn!("Parsing HMAC key");
-                            slot_nb = if slot_nb == 130 {0} else {1};
+                            slot_nb = u8::from(slot_nb != 130);
 
                             index += 1;
 

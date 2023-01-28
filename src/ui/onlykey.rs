@@ -440,7 +440,7 @@ impl<'a> Widget for AccountDataWidget<'a> {
 pub fn split_string_in_chunks(instr: &str, chunk_size: usize) -> (String, usize) {
     let mut height = 1;
     if instr.len() > chunk_size {
-        height = instr.len() / chunk_size as usize + 1;
+        height = instr.len() / chunk_size + 1;
         (instr.chars()
             .collect::<Vec<char>>()
             .chunks(chunk_size)
@@ -670,23 +670,20 @@ impl<'a> Widget for EccDataWidget<'a> {
         let mut key_type = "";
         let mut key_usage = String::new();
 
-        match self.key {
-            Some(key) => {
-                key_label = key.label;
-                key_type = match key.r#type {
-                    okbr::ECCKeyType::X25519 => "X25519",
-                    okbr::ECCKeyType::NIST256P1 => "NIST256P1",
-                    okbr::ECCKeyType::SECP256K1 => "SECP256K1",
-                };
-                key_usage = {
-                    let mut usage = vec![];
-                    if key.feature.contains(KeyFeature::DECRYPTION) {usage.push("Decryption");}
-                    if key.feature.contains(KeyFeature::SIGNATURE) {usage.push("Signature");}
-                    if key.feature.contains(KeyFeature::BACKUP) {usage.push("Backup");}
-                    usage.join(" & ")
-                };
-            }
-            None => {},
+        if let Some(key) = self.key {
+            key_label = key.label;
+            key_type = match key.r#type {
+                okbr::ECCKeyType::X25519 => "X25519",
+                okbr::ECCKeyType::NIST256P1 => "NIST256P1",
+                okbr::ECCKeyType::SECP256K1 => "SECP256K1",
+            };
+            key_usage = {
+                let mut usage = vec![];
+                if key.feature.contains(KeyFeature::DECRYPTION) {usage.push("Decryption");}
+                if key.feature.contains(KeyFeature::SIGNATURE) {usage.push("Signature");}
+                if key.feature.contains(KeyFeature::BACKUP) {usage.push("Backup");}
+                usage.join(" & ")
+            };
         }
 
         let table = Table::new(vec![
@@ -783,22 +780,19 @@ impl<'a> Widget for RsaDataWidget<'a> {
         let mut key_type = String::new();
         let mut key_usage = String::new();
 
-        match self.key {
-            Some(key) => {
-                key_label = key.label;
-                key_type = match key.r#type {
-                    1024 | 2048 | 3072 | 4096 => key.r#type.to_string(),
-                    _ => String::new(),
-                };
-                key_usage = {
-                    let mut usage = vec![];
-                    if key.feature.contains(KeyFeature::DECRYPTION) {usage.push("Decryption");}
-                    if key.feature.contains(KeyFeature::SIGNATURE) {usage.push("Signature");}
-                    if key.feature.contains(KeyFeature::BACKUP) {usage.push("Backup");}
-                    usage.join(" & ")
-                };
-            }
-            None => {},
+        if let Some(key) = self.key {
+            key_label = key.label;
+            key_type = match key.r#type {
+                1024 | 2048 | 3072 | 4096 => key.r#type.to_string(),
+                _ => String::new(),
+            };
+            key_usage = {
+                let mut usage = vec![];
+                if key.feature.contains(KeyFeature::DECRYPTION) {usage.push("Decryption");}
+                if key.feature.contains(KeyFeature::SIGNATURE) {usage.push("Signature");}
+                if key.feature.contains(KeyFeature::BACKUP) {usage.push("Backup");}
+                usage.join(" & ")
+            };
         }
 
         let table = Table::new(vec![
