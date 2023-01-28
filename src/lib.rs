@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Result, bail, ensure};
-use num_bigint_dig::ModInverse;
-use rsa::{RsaPrivateKey, BigUint};
+use num_bigint_dig::BigUint;
+use num_bigint_dig::traits::ModInverse;
+use rsa::{RsaPrivateKey};
 use thiserror::Error;
 use data_encoding::{BASE32, BASE64};
 use log::{debug, info, error, trace, warn};

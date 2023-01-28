@@ -11,11 +11,11 @@ use tui::{
     Terminal, widgets::ListState,
 };
 use crossterm::{
-    event::{self, EnableMouseCapture, DisableMouseCapture, Event, KeyCode},
+    event::{self, EnableMouseCapture, DisableMouseCapture, Event, KeyCode, KeyEventKind},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use clap::{Parser, clap_derive::ArgEnum};
+use clap::{Parser};
 
 mod ui;
 
@@ -44,12 +44,12 @@ struct Cli {
     decryption_key_type: Option<DecrKeyType>,*/
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum)]
+/*#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 enum DecrKeyType {
     Ecc,
     Rsa,
     Pass,
-}
+}*/
 
 #[derive(Clone)]
 enum Panel {
@@ -356,6 +356,9 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tick_rate: Dura
             .unwrap_or_else(|| Duration::from_secs(0));
         if crossterm::event::poll(timeout)? {
             if let Event::Key(key) = event::read()? {
+                if key.kind == KeyEventKind::Release {
+                    continue;
+                }
                 if app.get_error().is_some() {
                     match key.code {
                         KeyCode::Enter | KeyCode::Esc => {
